@@ -33,7 +33,6 @@
 		frm.addParam("func", "IQ");
         frm.addParam("enc_col", "userId");
         frm.addParam("query_id", "index.user.select_userInfo");
-        console.log(frm);
         frm.addParam("dataType", "json");
 		frm.request();
     }

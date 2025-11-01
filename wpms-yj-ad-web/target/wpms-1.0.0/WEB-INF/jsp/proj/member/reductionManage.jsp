@@ -62,6 +62,7 @@
 	
 	// 그리드 클릭 이벤트 내용
 	function gridRowClickEvent(event) {
+		console.log(event)
 		OpenPopupSingle("/member/reductionManagePopup.do?applyCode="+ event.data.applyCode + "&memberId=" + event.data.memberId + "&confirmYn=" + event.data.confirmYn + "&delYn=" + event.data.delYn, 950, 860, "_Pop3");
 	} 
 	
@@ -82,7 +83,8 @@
 		frm.addParam("func", "IQ");
 	    frm.addParam("startDt", startDt);
 		frm.addParam("endDt", endDt);
-		frm.addParam("gubn","MEMBER");
+		//frm.addParam("gubn","MEMBER");
+		frm.addParam("gubn","kReductionType");
 		frm.addParam("enc_col", "kSearchName");
 		frm.addParam("query_id", "member.reductionManage.Select_List");
 	    frm.addParam("dataType", "json");           // 그리드 불러오는 타입 (기본 json)
@@ -174,8 +176,11 @@
 					<form:select id="kConfirmYn" caption="처리여부" all="true" allLabel="전체" queryId="#CONFIRM_YN" value="N"/>
 					<form:select id="kDelYn" caption="삭제여부" all="true" allLabel="전체" queryId="#DEL_YN" value="N"/>
 					<form:input id="kSearchName" caption="이름" addAttr="maxlength='20'" />
+					<form:select id="kReductionType" caption="감면구분" all="false" queryId="#REDUCTION_GUBN"/>
 					<form:select id="kReductionCode" caption="감면정보" all="true" allLabel="전체" queryId="member.reductionManage.select_reductionList"/>
 					<form:select id="kAutoConfirmYn" caption="자동승인여부" all="true" allLabel="전체" queryId="#REDUCT_INPUT_GUBN"/>
+
+
 					<form:input id="kSearchDate" caption="신청일자" addAttr="maxlength='20'" />
 				</form>
 			</div>

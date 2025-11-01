@@ -70,7 +70,7 @@
 		<script type="text/javascript" src="<c:url value='/proj/js/projgridhelper.js'/>"></script>
 	</head>
 
-	<body style="background:url('<c:url value='/assets/images/login_background.png'/>') center no-repeaewt; background-size:100% 100%; height:calc(100vh - 30px)">
+	<body style="background:url('<c:url value='/assets/images/login_background.png'/>') center no-repeat; background-size:100% 100%; height:calc(100vh - 30px)">
    	<c:if test="${browser eq '4'}">
    		<div class="alert-browser"><img src="<c:url value='/images/alert_image.png'/>" style="width:15px; height:15px; vertical-align:sub" /> 현재 시스템은 크롬 브라우저에 최적화 되어있습니다. 크롬 브라우저를 사용해주시기 바랍니다. <a href="#"><i class="fa fa-times">&nbsp;</i></a></div>
    	</c:if>

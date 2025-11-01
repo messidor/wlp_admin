@@ -154,7 +154,7 @@
 					<form:input id="kSearchDate" caption="신청일시" addAttr="maxlength='20'" />
 					<form:input id="kSearchName" caption="이름" addAttr="maxlength='20'" />
 					<form:input id="kSearchCarNo" caption="차량번호" addAttr="maxlength='20'" />
-					<form:select id="kConfirmYn" caption="처리여부" all="true"allLabel="전체" queryId="#CONFIRM_YN" />
+					<form:select id="kConfirmYn" caption="처리여부" all="true" allLabel="전체" queryId="#CONFIRM_YN" />
 				</form>
 			</div>
 			<card:close />

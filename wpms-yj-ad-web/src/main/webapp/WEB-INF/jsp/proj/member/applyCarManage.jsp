@@ -33,6 +33,7 @@
             (최대길이) : 문자열로 입력할 것
         */
         setColumn(["no", "번호", "center", 50], [false, ["index", "asc"]]),
+		setColumn(["carManualApplyYn", "차량수동등록여부", "center", 60]),
         setColumn(["delYn", "delYn", "center", 60],[],true),
         setColumn(["applyCode", "applyCode", "center", 60],[],true),
         setColumn(["memberId", "memberId", "center", 60],[],true),
@@ -58,22 +59,22 @@
     _gridHelper.addRowDblClickEvent(function(event) {
     	if(event.data.confirmCnt > 1){
     		if(event.data.confirmGubn == "C"){
-    			OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 660, "_Pop1");
+    			OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&carManualApplyYn=" + event.data.carManualApplyYn + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 660, "_Pop1");
     		}else{
-   				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop2");
+   				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&carManualApplyYn=" + event.data.carManualApplyYn+ "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop2");
     		}
     	}else{
     		if(event.data.confirmGubn == "N" && event.data.confirmCnt > 0){
 //     			if(event.data.hSeq > 0){
-    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop3");	
+    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&carManualApplyYn=" + event.data.carManualApplyYn+ "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop3");
 //     			}else{
 //     				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn, 950, 660, "_Pop3");	
 //     			}
     		}else{
     			if(event.data.confirmCnt > 0 && event.data.hSeq > 0){
-    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop3");		
+    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&carManualApplyYn=" + event.data.carManualApplyYn+ "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 965, "_Pop3");
     			}else{
-    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 660, "_Pop4");
+    				OpenPopupSingle("/member/applyCarManagePopup.do?memberId=" + event.data.memberId + "&carManualApplyYn=" + event.data.carManualApplyYn+ "&applyCode=" + event.data.applyCode + "&carNo=" + event.data.carNo+ "&confirmCnt=" + event.data.confirmCnt+ "&hSeq=" + event.data.hSeq+ "&confirmGubn=" + event.data.confirmGubn+"&delYn="+event.data.delYn, 950, 660, "_Pop4");
     			}
     		}
     		

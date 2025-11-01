@@ -64,6 +64,15 @@ div.z-idx-item2 {
 			$("#kCarNo").val(data[0].carNo);
 			$("#kCarAlias").val(data[0].carAlias);
 			$("#kFrightCarYn").val(data[0].frightCarYn);
+			//수동감면시 팝업 데이터 추가
+			$("#KCarManualApplyYn").val(data[0].carManualApplyYn);
+			$("#kCarCc").val(data[0].carCc);
+			$("#KCarLength").val(data[0].carLength);
+			$("#KridingCnt").val(data[0].ridingCnt);
+			$("#KCarType").val(data[0].carType);
+			$("#KlowPltGubn").val(data[0].lowPltGubn);
+
+
 
 			if(data[0].confirmGubn != 'N'){
 				if(overLap == "Y"){
@@ -172,7 +181,6 @@ div.z-idx-item2 {
 			$("#approveMemberId").val(data[0].memberId);
 			$("#approveMemberInputId").val(data[0].memberId);
 			$("#approveFrightCarYn").val(data[0].frightCarYn);
-			
 // 			if(data[0].fileName === undefined){
 // 				$("#approveImage").attr("href","/walletfree-admin/images/no_img.jpg");
 // 				$("#approveImage").children().attr("src","/walletfree-admin/images/no_img.jpg");
@@ -526,6 +534,15 @@ div.z-idx-item2 {
 		            <label:input id="kCarAlias" caption="차량별칭" size="12" state="readonly"/>
 		            <label:input id="kCarNo" caption="차량번호" size="12" state="readonly"/>
 		            <label:input id="kFrightCarYn" caption="대형차량 여부" size="12" state="readonly" addAttr="style='text-align:center;'"/>
+					<c:if test="${param.carManualApplyYn eq 'Y'}">
+						<label:input id="KCarManualApplyYn" caption="수동등록 여부" size="12" state="readonly"/>
+						<label:input id="kCarCc" caption="배기량(CC)" size="12" state="readonly"/>
+						<label:input id="KCarLength" caption="차량 길이(mm)" size="12" state="readonly"/>
+						<label:input id="KridingCnt" caption="승차 정원" size="12" state="readonly"/>
+						<label:input id="KCarType" caption="차량 종류" size="12" state="readonly"/>
+						<label:input id="KlowPltGubn" caption="차량구분" size="12" state="readonly"/>
+					</c:if>
+
 					<label:textarea id="kRejectReason" caption="거절사유" size="12" rows="3"/>
 				</form>
 				<card:close />
