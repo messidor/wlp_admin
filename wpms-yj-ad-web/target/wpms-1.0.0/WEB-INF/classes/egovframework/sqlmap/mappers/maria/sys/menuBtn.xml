@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.menuBtn">
+
+	<select id="select_menuList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARENT_MENU_ID
+             , A.MENU_ID
+             , A.MENU_NAME
+             , A.MENU_URL
+             , C.USER_NAME AS MOD_ID
+             , DATE_FORMAT(A.MOD_DT, '%Y-%m-%d %H:%i:%s') MOD_DT
+             , CASE WHEN IFNULL(D.CHILD_CNT, 0) > 0 THEN 'Y' ELSE 'N' END AS HAS_CHILD
+          FROM T_SYS_MENU_INFO A
+          LEFT OUTER JOIN T_USER_INFO C
+            ON A.MOD_ID = C.USER_ID
+          LEFT OUTER JOIN (
+                    SELECT DA.MENU_ID, COUNT(DB.MENU_ID) AS CHILD_CNT
+                      FROM T_SYS_MENU_INFO DA
+                      LEFT OUTER JOIN T_SYS_MENU_INFO DB
+                        ON DA.MENU_ID = DB.PARENT_MENU_ID
+                     GROUP BY DA.MENU_ID
+               ) D
+            ON A.MENU_ID = D.MENU_ID
+         WHERE A.PARENT_MENU_ID = #{hMenuId}
+           AND A.USE_YN = 'Y'
+         
+		<if test="kMenuName neq null and kMenuName neq ''" >
+			AND A.MENU_NAME LIKE '%${kMenuName}%'
+		</if>		
+		  
+	</select>
+	
+	<select id="select_btnList" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN B.BTN_ID IS NULL THEN 'N' ELSE 'Y' END AS INCLUDE_VALUE
+             , CASE WHEN B.BTN_ID IS NULL THEN 'N' ELSE 'Y' END AS INCLUDE_VALUE_ORG             
+             , B.MENU_ID
+             , A.BTN_ID
+             , A.BTN_CAPTION BTN_NAME
+             , C.USER_NAME AS MOD_ID
+             , DATE_FORMAT(A.MOD_DT, '%Y-%m-%d %H:%i:%s') MOD_DT
+          FROM T_SYS_BTN_INFO A
+          LEFT OUTER JOIN T_SYS_MENU_BTN B
+            ON A.BTN_ID = B.BTN_ID
+           AND B.MENU_ID = #{hMenuId2}
+          LEFT OUTER JOIN T_USER_INFO C
+            ON B.MOD_ID = C.USER_ID
+         WHERE A.USE_YN = 'Y'
+         
+        <if test='hHasChild neq null and hHasChild == "Y"' >
+			AND A.BTN_ID = 'SEARCH'
+		</if>
+		
+		<if test="hMenuId eq null or hMenuId eq ''" >
+			AND 1 = 0
+		</if>
+         
+         ORDER BY A.BTN_ORDER
+	</select>
+
+	<insert id="insert_data">
+		INSERT INTO T_SYS_MENU_BTN (
+     		MENU_ID, BTN_ID, REG_ID, REG_DT
+          , MOD_ID, MOD_DT
+        ) VALUES (
+			#{menuId}, #{grdBtnId}, #{userId}, NOW()
+		  , #{userId}, NOW()
+        )
+	</insert>
+	
+	<delete id="delete_data">
+        DELETE FROM T_SYS_MENU_BTN
+         WHERE MENU_ID IN (
+                        WITH RECURSIVE CTE AS (
+                            SELECT MENU_ID, PARENT_MENU_ID, CODE_TYPE
+                              FROM T_SYS_MENU_INFO
+                             WHERE MENU_ID = #{menuId}
+                             UNION ALL
+                            SELECT A.MENU_ID, A.PARENT_MENU_ID, A.CODE_TYPE
+                              FROM T_SYS_MENU_INFO A
+                             INNER JOIN CTE C
+                                ON A.PARENT_MENU_ID = C.MENU_ID
+                             WHERE A.CODE_TYPE IN ('F', 'C')
+                               AND A.USE_YN = 'Y'
+                )
+                SELECT MENU_ID
+                FROM CTE
+    )
+           AND BTN_ID = #{grdBtnId}
+	</delete>
+	
+	<delete id="delete_data2">
+		DELETE FROM T_SYS_MENU_BTN_ROLE_INFO
+         WHERE MENU_ID = #{menuId}
+           AND BTN_ID = #{grdBtnId}
+	</delete>
+</mapper>

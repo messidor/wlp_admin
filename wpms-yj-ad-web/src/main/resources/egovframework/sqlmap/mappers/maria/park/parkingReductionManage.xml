@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingReductionManage">
+
+	<select id="select_parkingList" parameterType="commonMap" resultType="commonMap">
+		SELECT PI.PARKING_NO, PI.PARKING_NAME, PI.GUGUN AS PARKING_GUGUN
+		     , SCC.CODE_NAME1 GUGUN_NAME
+		  FROM T_PARKING_INFO PI
+		  LEFT OUTER JOIN T_SYS_COMCODE SCC
+		    ON PI.GUGUN_PARENT = SCC.PARENT_CODE_ID
+		   AND PI.GUGUN = SCC.CODE_ID
+		 WHERE PI.USE_YN = 'Y'
+		 <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND PI.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kLocalGubn neq null and kLocalGubn neq ''" >
+			AND PI.GUGUN = #{kLocalGubn}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 ORDER BY PI.PARKING_NAME
+	</select>
+
+	<select id="select_parkingReductionList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.REDUCTION_CODE, T.REDUCTION_NAME, T.REG_ID, T.REDUCTION_OPT, T.REG_DT
+		     , T.INCLUDE_VALUE, T.REDUCTION_RATE, T.FREE_HOUR, T.ADDR_CHK_YN, T.REDUCTION_ORDER
+		     , T.STATE_COL, T.APPLY_CAR_KIND, T.APPLY_RIDING_CNT
+		  FROM (SELECT RI.REDUCTION_CODE, RI.REDUCTION_NAME
+					 , UI.USER_NAME AS REG_ID, RI.REDUCTION_OPT, PR.REG_DT
+			         , CASE WHEN PR.REDUCTION_CODE IS NOT NULL THEN 'Y' ELSE 'N' END INCLUDE_VALUE
+			         , CASE WHEN PR.REDUCTION_CODE IS NOT NULL THEN PR.REDUCTION_RATE ELSE RI.REDUCTION_RATE END REDUCTION_RATE
+			         , CASE WHEN PR.REDUCTION_CODE IS NOT NULL THEN PR.FREE_HOUR ELSE RI.FREE_HOUR END FREE_HOUR
+			         , CASE WHEN PR.REDUCTION_CODE IS NOT NULL THEN PR.ADDR_CHK_YN ELSE RI.ADDR_CHK_YN END ADDR_CHK_YN
+			         , CASE WHEN PR.REDUCTION_CODE IS NOT NULL THEN PR.REDUCTION_ORDER ELSE RI.REDUCTION_ORDER END REDUCTION_ORDER
+			         , '' AS STATE_COL
+			         , PR.APPLY_CAR_KIND
+			         , PR.APPLY_RIDING_CNT
+			   	  FROM T_REDUCTION_INFO RI
+			      LEFT OUTER JOIN T_PARKING_REDUCTION PR
+			        ON RI.REDUCTION_CODE = PR.REDUCTION_CODE
+			       AND PR.PARKING_NO = #{hParkingNo}
+			      LEFT OUTER JOIN T_USER_INFO UI
+			        ON PR.REG_ID = UI.USER_ID
+			 	 WHERE RI.USE_YN = 'Y'
+		     ) T
+		 ORDER BY T.REDUCTION_ORDER ASC
+	</select>
+
+	<insert id="insert_parkingReduction">
+		INSERT INTO T_PARKING_REDUCTION
+		     (
+		       PARKING_NO, REDUCTION_CODE, REG_ID, REG_DT, REDUCTION_GUBN_PARENT
+		     , REDUCTION_GUBN, REDUCTION_NAME, REDUCTION_RATE, REDUCTION_ORDER, FREE_HOUR
+		     , ADDR_CHK_YN_PARENT, ADDR_CHK_YN
+             , APPLY_CAR_KIND_PARENT, APPLY_CAR_KIND
+             , APPLY_RIDING_CNT_PARENT, APPLY_RIDING_CNT
+             , REDUCTION_GROUP_ORDER
+		     ) SELECT #{hParkingNo}, #{grdReductionCode}, #{userId}, NOW(), 'REDUCTION_GUBN'
+		     		, REDUCTION_GUBN, REDUCTION_NAME, #{grdReductionRate}, REDUCTION_ORDER, #{grdFreeHour}
+		     		, 'USE_YN', #{grdAddrChkYn}
+        <if test="grdApplyCarKind neq null and grdApplyCarKind neq ''">
+                    , 'APPLY_CAR_KIND', #{grdApplyCarKind}
+        </if>
+        <if test="grdApplyCarKind eq null or grdApplyCarKind eq ''">
+                    , APPLY_CAR_KIND_PARENT, APPLY_CAR_KIND
+        </if>
+        <if test="grdApplyRidingCnt neq null and grdApplyRidingCnt neq ''">
+                    , 'APPLY_RIDING_CNT', #{grdApplyRidingCnt}
+        </if>
+        <if test="grdApplyRidingCnt eq null or grdApplyRidingCnt eq ''">
+                    , APPLY_RIDING_CNT_PARENT, APPLY_RIDING_CNT
+        </if>
+                    , REDUCTION_GROUP_ORDER
+		         FROM T_REDUCTION_INFO
+		        WHERE USE_YN = 'Y'
+		          AND REDUCTION_CODE = #{grdReductionCode}
+	</insert>
+
+	<delete id="delete_parkingReduction">
+		DELETE FROM T_PARKING_REDUCTION
+		 WHERE PARKING_NO = #{hParkingNo}
+		   AND REDUCTION_CODE = #{grdReductionCode}
+	</delete>
+</mapper>

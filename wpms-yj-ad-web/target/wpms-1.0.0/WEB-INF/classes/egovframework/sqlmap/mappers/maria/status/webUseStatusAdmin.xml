@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.webUseStatusAdmin">
+
+	<select id="select_loginDate" parameterType="commonMap" resultType="commonMap">
+		SELECT A.LOGIN_DT, CONCAT(A.LOG_CNT, '건') AS LOG_CNT
+		  FROM (
+				SELECT Z.LOGIN_DT, FORMAT(COUNT(*), 0) AS LOG_CNT
+				  FROM (
+						SELECT DATE_FORMAT(A.LOGIN_DT, '%Y-%m-%d') LOGIN_DT
+						  FROM T_USER_LOG_INFO A
+						  LEFT OUTER JOIN T_USER_INFO B
+						    ON A.MEMBER_ID = B.USER_ID
+					 ) Z
+				 GROUP BY Z.LOGIN_DT
+				 ORDER BY Z.LOGIN_DT DESC
+			 ) A
+		 WHERE 1=1
+  <![CDATA[AND A.LOGIN_DT >= #{startDate}]]>
+  <![CDATA[AND A.LOGIN_DT <= #{endDate}]]>
+		 ORDER BY A.LOGIN_DT DESC
+	</select>
+
+	<select id="select_loginUser" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(Z.USER_NAME, '탈퇴한 사용자') AS MEMBER_NAME, Z.MEMBER_ID, Z.LOGIN_DATE, Z.MEMBER_LOG_CNT
+		  FROM (SELECT T.USER_NAME, T.MEMBER_ID, T.LOGIN_DATE, MAX(T.LOGIN_DT) AS LOGIN_DT
+				     , CONCAT(FORMAT(SUM(T.LOG_CNT), 0), '건') AS MEMBER_LOG_CNT
+				     , SUM(T.LOG_CNT) AS LOG_CNT
+				  FROM ( SELECT Z.USER_NAME, Z.MEMBER_ID, Z.LOGIN_DATE
+						      , Z.LOGIN_DT, COUNT(*) AS LOG_CNT
+						   FROM ( SELECT B.USER_NAME, A.MEMBER_ID, A.LOGIN_DT
+								       , DATE_FORMAT(A.LOGIN_DT, '%Y-%m-%d') LOGIN_DATE
+								    FROM T_USER_LOG_INFO A
+								    LEFT OUTER JOIN T_USER_INFO B
+								      ON A.MEMBER_ID = B.USER_ID
+							  ) Z
+						  GROUP BY Z.LOGIN_DATE, Z.USER_NAME, Z.MEMBER_ID, Z.LOGIN_DT
+					 ) T
+				 WHERE T.LOGIN_DATE = #{hLoginDt}
+				 GROUP BY T.USER_NAME, T.MEMBER_ID, T.LOGIN_DATE
+		    ) Z
+		ORDER BY Z.LOG_CNT DESC, Z.LOGIN_DT DESC
+	</select>
+
+	<select id="select_loginBrowser" parameterType="commonMap" resultType="commonMap">
+		SELECT A.LOGIN_DT, A.IP_ADDR, A.BROWSER_NAME
+		  FROM T_USER_LOG_INFO A
+		 INNER JOIN (
+					 SELECT A.MEMBER_ID, A.LOGIN_DT
+					      , DATE_FORMAT(A.LOGIN_DT, '%Y-%m-%d') AS DATE_LOG
+					   FROM T_USER_LOG_INFO A
+					   LEFT OUTER JOIN T_USER_INFO B
+					     ON A.MEMBER_ID = B.USER_ID
+					) Z
+		    ON A.MEMBER_ID = Z.MEMBER_ID
+		   AND A.LOGIN_DT = Z.LOGIN_DT
+		 WHERE Z.DATE_LOG = #{hLoginDt}
+		   AND A.MEMBER_ID = #{hMemberId}
+		 ORDER BY A.LOGIN_DT DESC
+	</select>
+	
+	<select id="select_loginListExcel" parameterType="commonMap" resultType="commonMap">
+		SELECT DATE_FORMAT(MLI.LOGIN_DT, '%Y-%m-%d') AS LOG_DATE, MI.USER_NAME
+		     , MLI.LOGIN_DT, MLI.IP_ADDR, MLI.BROWSER_NAME
+		  FROM T_USER_LOG_INFO MLI
+		 INNER JOIN T_USER_INFO MI
+		    ON MLI.MEMBER_ID = MI.USER_ID
+		 WHERE 1=1
+  <![CDATA[AND MLI.LOGIN_DT >= (STR_TO_DATE(#{startDate}, '%Y%m%d'))]]>
+  <![CDATA[AND MLI.LOGIN_DT <= (STR_TO_DATE(#{endDate}, '%Y%m%d') + INTERVAL 1 DAY)]]>
+ 		 ORDER BY LOG_DATE DESC, MLI.LOGIN_DT DESC
+	</select>
+</mapper>

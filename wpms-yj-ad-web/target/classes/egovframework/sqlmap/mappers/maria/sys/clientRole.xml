@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.clientRole">
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT A.ROLE_ID
+             , A.ROLE_NAME
+             , A.ROLE_GUBN
+             , A.USE_YN
+             , B.USER_NAME MOD_ID
+             , DATE_FORMAT(A.MOD_DT, '%Y-%m-%d %H:%i:%s') MOD_DT
+             , 'Y' CHECK_VALUE
+             , '' STATE_COL
+			 , A.P_GOV_CODE GOV_CODE
+          FROM T_SYS_ROLE_INFO A
+          LEFT OUTER JOIN T_USER_INFO B
+            ON A.MOD_ID= B.USER_ID
+		 WHERE A.ROLE_ID NOT IN ('AD', 'MANAGE')
+		 
+		<if test="kRoleGubn neq null and kRoleGubn neq ''" >
+			AND A.ROLE_GUBN = #{kRoleGubn}
+		</if>
+		<if test="kSearchGubn neq null and kSearchGubn neq ''" >
+			<choose>
+				<when test ='kSearchGubn == "A"'>
+					AND A.ROLE_ID LIKE '%${kSearchName}%'
+				</when>
+				<when test ='kSearchGubn == "B"'>
+					AND A.ROLE_NAME LIKE '%${kSearchName}%'
+				</when>
+			</choose>
+		</if>
+		<if test="kSearchName neq null and kSearchName neq ''">
+			AND (A.ROLE_ID LIKE '%${kSearchName}%' OR A.ROLE_NAME LIKE '%${kSearchName}%')
+		</if>
+		
+	     ORDER BY A.ROLE_ID
+	</select>
+	
+	<select id="select_duplicate" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) AS CNT
+		  FROM T_SYS_ROLE_INFO
+		 WHERE ROLE_ID = #{grdRoleId}
+	</select>
+	
+	<insert id="insert_role">
+		INSERT INTO T_SYS_ROLE_INFO (
+			ROLE_ID, ROLE_NAME, ROLE_GUBN_PARENT, ROLE_GUBN
+		  , USE_YN_PARENT, USE_YN, REG_ID, REG_DT, MOD_ID
+		  , MOD_DT, P_GOV_CODE
+		) VALUES (
+		    #{grdRoleId}, #{grdRoleName}, 'ROLE_GUBN', #{grdRoleGubn}
+		  , 'USE_YN', #{grdUseYn}, #{userId}, NOW(), #{userId}
+		  , NOW(), #{grdGovCode}
+		)		
+	</insert>
+	
+	<update id="update_role">
+		UPDATE T_SYS_ROLE_INFO
+           SET ROLE_NAME = #{grdRoleName}
+             , ROLE_GUBN = #{grdRoleGubn}
+			 , P_GOV_CODE = #{grdGovCode}
+             , USE_YN = #{grdUseYn}
+             , MOD_ID = #{userId}
+             , MOD_DT = NOW()
+         WHERE ROLE_ID = #{grdRoleId}
+	</update>
+
+	<delete id="delete_role">
+		DELETE FROM T_SYS_ROLE_INFO
+         WHERE ROLE_ID = #{grdRoleId}
+	</delete>
+	
+	<delete id="delete_role2">
+		DELETE FROM T_SYS_USER_ROLE_INFO
+         WHERE ROLE_ID = #{grdRoleId}
+	</delete>
+	
+	<delete id="delete_role3">
+		DELETE FROM T_SYS_MENU_BTN_ROLE_INFO
+         WHERE ROLE_ID = #{grdRoleId}
+	</delete>
+	
+</mapper>

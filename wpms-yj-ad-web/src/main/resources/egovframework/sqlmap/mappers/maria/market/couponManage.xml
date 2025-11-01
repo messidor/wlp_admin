@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.couponManage">
+
+	<select id="select_couponMemberList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.COUPON_MEMBER_ID, T.COUPON_MEMBER_NAME, T.MEMBER_PHONE, T.MEMBER_EMAIL
+			 , T.REG_DT, CONCAT('[' , T.ZIP_CODE , '] ' , T.ADDR_CODE1 , ' ' , T.ADDR_CODE2) AS ADDRESS
+	         , T.P_GOV_CODE, T.P_GOV_NAME, T.PARKING_NO, T.PARKING_NAME, T.USE_YN
+	         , '상세' AS DETAIL, '' AS STATE_COL, '' AS MEMBER_PWD
+	   	  FROM (SELECT CMI.COUPON_MEMBER_ID, CMI.COUPON_MEMBER_NAME, CMI.MEMBER_PHONE, CMI.MEMBER_EMAIL
+	   			     , CMI.REG_DT, CMI.ZIP_CODE, CMI.ADDR_CODE1, CMI.ADDR_CODE2
+	   				 , GROUP_CONCAT(PI.P_GOV_CODE ORDER BY PI.P_GOV_CODE SEPARATOR ', ') AS P_GOV_CODE
+ 					 , CASE 
+                    		WHEN COUNT(PGI.P_GOV_NAME) > 1 THEN CONCAT(MIN(PGI.P_GOV_NAME) , ' 외 ' , (COUNT(PGI.P_GOV_NAME) - 1) , '건')
+                    		ELSE MIN(PGI.P_GOV_NAME)
+                       END AS P_GOV_NAME
+	   				 , GROUP_CONCAT(PI.PARKING_NO ORDER BY PI.PARKING_NO SEPARATOR ', ') AS PARKING_NO
+					 , CASE 
+                    		WHEN COUNT(PI.PARKING_NAME) > 1 THEN CONCAT(MIN(PI.PARKING_NAME) , ' 외 ' , (COUNT(PI.PARKING_NAME) - 1) , '건')
+                       		ELSE MIN(PI.PARKING_NAME)
+                 	   END AS PARKING_NAME
+	   				 , CMI.USE_YN
+				  FROM T_COUPON_MEMBER_INFO CMI
+				 INNER JOIN T_COUPON_AREA_INFO ACAI
+				    ON CMI.COUPON_MEMBER_ID = ACAI.COUPON_MEMBER_ID
+				 INNER JOIN T_PARKING_INFO PI
+				    ON ACAI.PARKING_NO = PI.PARKING_NO
+				 INNER JOIN T_PARKING_GOV_INFO PGI
+				    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+				 WHERE CMI.CONFIRM_YN = 'Y'
+				   AND CMI.MEMBER_GUBN = 'M'
+				   AND ACAI.DEL_YN = 'N'
+				<if test="kMemberName neq null and kMemberName neq ''" >
+					AND CMI.COUPON_MEMBER_NAME = #{kMemberName}
+				</if>
+				<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+					AND CMI.MEMBER_PHONE = #{kMemberPhone}
+				</if>
+				<if test="kUseYn neq null and kUseYn neq ''" >
+					AND CMI.USE_YN = #{kUseYn}
+				</if>
+				 GROUP BY CMI.COUPON_MEMBER_ID, CMI.COUPON_MEMBER_NAME, CMI.MEMBER_PHONE, CMI.MEMBER_EMAIL
+				     , CMI.REG_DT, CMI.ZIP_CODE, CMI.ADDR_CODE1, CMI.ADDR_CODE2, CMI.USE_YN
+	          ) T
+	      WHERE 1=1
+ 		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND T.P_GOV_CODE LIKE '%${kParkingGovCode}%'
+		</if>
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND T.PARKING_NO LIKE '%${kParkingNo}%'
+		</if>
+		 ORDER BY T.REG_DT ASC
+	</select>
+
+	<select id="select_detailList" parameterType="commonMap" resultType="commonMap">
+		SELECT CMI.COUPON_MEMBER_ID, CMI.COUPON_MEMBER_NAME, CMI.MEMBER_PHONE
+		     , CMI.MEMBER_EMAIL, CMI.ZIP_CODE
+		     , CONCAT(CMI.ADDR_CODE1 , ' ' , CMI.ADDR_CODE2) AS ADDRESS
+		     , CMI.ADDR_CODE1 AS ADDRESS1, CMI.ADDR_CODE2 AS ADDRESS2
+		     , CMI.USE_YN
+		     , DATE_FORMAT(CMI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		  FROM T_COUPON_MEMBER_INFO CMI
+		 WHERE CMI.COUPON_MEMBER_ID = #{hCouponMemberId}
+		   AND CMI.MEMBER_GUBN = 'M'
+		 ORDER BY CMI.REG_DT
+	</select>
+
+	<select id="select_areaList" parameterType="commonMap" resultType="commonMap">
+		SELECT CAI.AREA_NAME, PI.PARKING_NAME, PGI.P_GOV_NAME
+		  FROM T_COUPON_AREA_INFO CAI
+		 INNER JOIN T_PARKING_INFO PI
+		    ON CAI.PARKING_NO = PI.PARKING_NO
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+		    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+		 WHERE CAI.COUPON_MEMBER_ID = #{hCouponMemberId}
+		   AND CAI.DEL_YN = 'N'
+		 ORDER BY CAI.AREA_NAME, PI.PARKING_NAME
+	</select>
+	
+ 	<update id="update_member">
+		UPDATE T_COUPON_MEMBER_INFO
+		   SET USE_YN = #{kUseYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE COUPON_MEMBER_ID = #{kCouponMemberId}
+	</update>
+	
+	 <update id="update_memberPassword">
+		UPDATE T_COUPON_MEMBER_INFO
+		   SET MEMBER_PWD = #{kMemberPw}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE COUPON_MEMBER_ID = #{kCouponMemberId}
+	</update>
+</mapper>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingGovManage">
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT PGI.P_GOV_CODE, PGI.P_GOV_NAME, PGI.P_GOV_TEL
+			 , CONCAT('[' , PGI.P_GOV_POST , '] ' , PGI.P_GOV_ADDR , ' ' , PGI.P_GOV_ADDR2) AS ADDRESS
+			 , PGI.P_MANAGER, PGI.P_MANAGER_PHONE, PGI.P_MANAGER_EMAIL
+			 , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'USE_YN' AND CODE_ID = PGI.USE_YN) AS USE_YN_NAME
+			 , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PGI.MOD_ID) as MOD_ID
+			 , DATE_FORMAT(PGI.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		  FROM T_PARKING_GOV_INFO PGI
+		 WHERE 1=1
+		<if test="kSearchName neq null and kSearchName neq ''" >
+			AND PGI.P_GOV_NAME LIKE '%${kSearchName}%'
+		</if>
+		<if test="kSearchManager neq null and kSearchManager neq ''" >
+			AND PGI.P_MANAGER = #{kSearchManager} 
+		</if>
+		<if test="kUseYn neq null and kUseYn neq ''" >
+			AND PGI.USE_YN = #{kUseYn}
+		</if>
+		 ORDER BY PGI.P_GOV_NAME DESC
+	</select>
+
+</mapper>

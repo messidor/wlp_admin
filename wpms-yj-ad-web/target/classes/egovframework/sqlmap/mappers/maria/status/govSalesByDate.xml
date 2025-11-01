@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.govSalesByDate">
+
+	<select id="select_govSalesByDateList" parameterType="commonMap" resultType="commonMap">
+		  SELECT J.P_GOV_NAME,
+				<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			     IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0) AS `d${item.kDayArr}`
+			     </foreach>
+		    FROM T_PARKING_GOV_INFO J
+		    LEFT OUTER JOIN
+		    	( SELECT A.PAY_CODE
+		                , MAX(A.PAY_YEAR) PAY_YEAR
+						, MAX(A.PAY_MONTH) PAY_MONTH
+						, MAX(A.PAY_DAY) PAY_DAY
+						, MAX(A.PAY_PRICE) AS TOTAL
+						, MAX(D.P_GOV_NAME) P_GOV_NAME
+						, MAX(D.P_GOV_CODE) P_GOV_CODE
+		             FROM ( SELECT DATE_FORMAT(P.PAY_DATE, '%Y') PAY_YEAR
+								 , DATE_FORMAT(P.PAY_DATE, '%m') PAY_MONTH
+								 , DATE_FORMAT(P.PAY_DATE, '%d') PAY_DAY
+								 , P.PAY_CODE
+								 , P.PAY_SEQ
+								 , P.PC_GUBN
+								 , P.PAY_PRICE						
+							  FROM T_PARKING_PAY P
+							 WHERE EXISTS ( SELECT 1
+					                          FROM (
+													 SELECT PAY_CODE, COUNT(*) CNT
+													   FROM T_PARKING_PAY
+													  GROUP BY PAY_CODE													  
+										   <![CDATA[ HAVING COUNT(*) < 2 ]]>
+												    ) ES
+							 			     WHERE P.PAY_CODE = ES.PAY_CODE
+									   	   )
+							)A
+					INNER JOIN T_PARKING_CHARGE B
+					   ON A.PAY_CODE = B.PAY_CODE
+					INNER JOIN T_PARKING_INFO C
+					   ON B.PARKING_NO = C.PARKING_NO
+					INNER JOIN T_PARKING_GOV_INFO D
+					   ON C.P_GOV_CODE = D.P_GOV_CODE
+					WHERE PAY_YEAR = #{kUseYear}
+					  AND PAY_MONTH = #{kUseMonth}
+					  AND C.USE_YN = 'Y'
+					GROUP BY A.PAY_CODE
+				)T
+		   ON J.P_GOV_CODE = T.P_GOV_CODE
+		   WHERE J.USE_YN = 'Y'
+		   	<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+			 AND J.P_GOV_CODE = #{hParkingGovCode}
+			</if>
+		GROUP BY J.P_GOV_NAME
+		ORDER BY J.P_GOV_NAME
+	</select>
+	
+	<select id="select_govSalesByDateExcel" parameterType="commonMap" resultType="commonMap">
+		SELECT *
+		  FROM (
+				  SELECT J.P_GOV_NAME,
+						<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+					     FORMAT(IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0), 0) AS `d${item.kDayArr}`
+					     </foreach>
+				    FROM T_PARKING_GOV_INFO J
+		    		LEFT OUTER JOIN 
+				    ( SELECT PAY_YEAR
+								, PAY_MONTH
+								, PAY_DAY
+								, SUM(PARKING_PRICE) AS TOTAL
+								, P_GOV_CODE
+								, P_GOV_NAME
+				             FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+										 , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+										 , DATE_FORMAT(A.PAY_DATE, '%d') PAY_DAY
+										 , B.PARKING_PRICE
+										 , D.P_GOV_CODE
+										 , D.P_GOV_NAME
+									  FROM T_PARKING_PAY A
+									 INNER JOIN T_PARKING_CHARGE B
+										ON A.PAY_CODE = B.PAY_CODE
+									 INNER JOIN T_PARKING_INFO C
+										ON B.PARKING_NO = C.PARKING_NO
+									 INNER JOIN T_PARKING_GOV_INFO D
+										ON C.P_GOV_CODE = D.P_GOV_CODE
+									 WHERE NOT EXISTS (
+								          		 		SELECT 1
+								          		 		  FROM (
+								           		 		  		 SELECT PAY_CODE, COUNT(*)
+								         					       FROM T_PARKING_PAY
+								         					      WHERE 1=1
+																	AND DATE_FORMAT(PAY_DATE, '%Y') = #{kUseYear}
+																	AND DATE_FORMAT(PAY_DATE, '%m') = #{kUseMonth}
+								         					      GROUP BY PAY_CODE
+								         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+								          		 		     ) Q
+								          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+								          		      ) 
+								       AND C.USE_YN = 'Y'
+									) P
+							WHERE PAY_YEAR = '${kUseYear}'
+							  AND PAY_MONTH = '${kUseMonth}'
+							  
+							GROUP BY PAY_YEAR,PAY_MONTH,PAY_DAY,P_GOV_CODE,P_GOV_NAME
+							)T
+					   ON T.P_GOV_CODE = J.P_GOV_CODE 
+					WHERE J.USE_YN = 'Y'
+					<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+					  AND J.P_GOV_CODE = #{hParkingGovCode}
+					</if>
+				GROUP BY J.P_GOV_CODE, J.P_GOV_NAME
+				
+				UNION
+				
+				SELECT '합계' AS P_GOV_NAME,
+						<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+					     FORMAT(IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0), 0) AS `d${item.kDayArr}`
+					     </foreach>
+				    FROM ( SELECT PAY_YEAR
+								, PAY_MONTH
+								, PAY_DAY
+								, SUM(PARKING_PRICE) AS TOTAL
+				             FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+										 , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+										 , DATE_FORMAT(A.PAY_DATE, '%d') PAY_DAY
+										 , B.PARKING_PRICE
+									  FROM T_PARKING_PAY A
+									 INNER JOIN T_PARKING_CHARGE B
+										ON A.PAY_CODE = B.PAY_CODE
+									 INNER JOIN T_PARKING_INFO C
+										ON B.PARKING_NO = C.PARKING_NO
+									  LEFT OUTER JOIN T_PARKING_GOV_INFO D
+										ON C.P_GOV_CODE = D.P_GOV_CODE
+									 WHERE NOT EXISTS (
+								          		 		SELECT 1
+								          		 		  FROM (
+								           		 		  		 SELECT PAY_CODE, COUNT(*)
+								         					       FROM T_PARKING_PAY
+								         					      WHERE 1=1
+																	AND DATE_FORMAT(PAY_DATE, '%Y') = #{kUseYear}
+																	AND DATE_FORMAT(PAY_DATE, '%m') = #{kUseMonth}
+								         					      GROUP BY PAY_CODE
+								         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+								          		 		     ) Q
+								          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+								          		      ) 
+								      AND C.USE_YN = 'Y'
+									<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+									  AND D.P_GOV_CODE = #{hParkingGovCode}
+									</if>
+									) P
+							WHERE PAY_YEAR = '${kUseYear}'
+							  AND PAY_MONTH = '${kUseMonth}'
+							GROUP BY PAY_YEAR,PAY_MONTH,PAY_DAY
+							)T
+					WHERE 1=1
+			) Y
+		ORDER BY Y.P_GOV_NAME
+	</select>
+</mapper>

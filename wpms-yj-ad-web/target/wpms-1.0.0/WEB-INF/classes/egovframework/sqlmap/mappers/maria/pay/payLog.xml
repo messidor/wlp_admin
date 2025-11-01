@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.payLog">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT ROW_NUMBER() OVER(ORDER BY P.REG_DT DESC) AS NUM
+			 , P.PAY_LOG_CODE
+			 , P.MEMBER_ID
+			 , M1.MEMBER_NAME
+			 , P.SERVICE_KEY
+			 , P.PARKING_NO
+			 , P.CAR_NO
+			 , DATE_FORMAT(P.ENT_DT, '%Y-%m-%d %H:%i:%s') AS ENT_DT
+			 , DATE_FORMAT(P.OUT_DT, '%Y-%m-%d %H:%i:%s') AS OUT_DT
+			 , IFNULL(P.TOTAL_PARKING_FEE, 0) AS TOTAL_PARKING_FEE
+			 , IFNULL(P.PRE_PAY_FEE, 0) AS PRE_PAY_FEE
+			 , IFNULL(P.DISCOUNT_FEE, 0) AS DISCOUNT_FEE
+			 , IFNULL(P.PARKING_FEE, 0) AS PARKING_FEE
+			 , IFNULL(P.PARKING_MIN, 0) AS PARKING_MIN
+			 , IFNULL(P.TOTAL_PARKING_PRICE, 0) AS TOTAL_PARKING_PRICE
+			 , IFNULL(P.DISCOUNT_PRICE, 0) AS DISCOUNT_PRICE
+			 , IFNULL(P.PARKING_PRICE, 0) AS PARKING_PRICE
+			 , IFNULL(P.CHARGE_PRICE, 0) AS CHARGE_PRICE
+			 , P.CALC_REDUCTION_CODE
+			 , P.CALC_REDUCTION_NAME
+			 , P.CALC_REDUCTION_RATE
+			 , P.PAY_RESULT_CODE
+			 , DATE_FORMAT(P.PAY_DT, '%Y-%m-%d %H:%i:%s') AS PAY_DT
+			 , M2.MEMBER_NAME AS REG_NAME
+			 , DATE_FORMAT(P.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			 , M3.MEMBER_NAME AS MOD_NAME
+			 , DATE_FORMAT(P.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			 , P.PAY_ERROR_DETAIL
+			 , CC1.CODE_NAME1 AS PAY_GUBN_NAME
+			 , PI.PARKING_NAME
+			 , FORMAT(IFNULL(P.TOTAL_PARKING_FEE, 0), 0) AS FM_TOTAL_PARKING_FEE
+			 , FORMAT(IFNULL(P.PRE_PAY_FEE, 0), 0) AS FM_PRE_PAY_FEE
+			 , FORMAT(IFNULL(P.DISCOUNT_FEE, 0), 0) AS FM_DISCOUNT_FEE
+			 , FORMAT(IFNULL(P.PARKING_FEE, 0), 0) AS FM_PARKING_FEE
+			 , FORMAT(IFNULL(P.PARKING_MIN, 0), 0) AS FM_PARKING_MIN
+			 , FORMAT(IFNULL(P.TOTAL_PARKING_PRICE, 0), 0) AS FM_TOTAL_PARKING_PRICE
+			 , FORMAT(IFNULL(P.DISCOUNT_PRICE, 0), 0) AS FM_DISCOUNT_PRICE
+			 , FORMAT(IFNULL(P.PARKING_PRICE, 0), 0) AS FM_PARKING_PRICE
+			 , FORMAT(IFNULL(P.CHARGE_PRICE, 0), 0) AS FM_CHARGE_PRICE
+		  FROM T_PAY_LOG P
+		 INNER JOIN T_PARKING_INFO PI
+		    ON P.PARKING_NO = PI.PARKING_NO
+		  LEFT OUTER JOIN T_MEMBER_INFO M1
+		    ON P.MEMBER_ID = M1.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC1
+		    ON P.PAY_GUBN_PARENT = CC1.PARENT_CODE_ID
+		   AND P.PAY_GUBN = CC1.CODE_ID
+		  LEFT OUTER JOIN T_MEMBER_INFO M2
+		    ON P.REG_ID = M2.MEMBER_ID
+		  LEFT OUTER JOIN T_MEMBER_INFO M3
+		    ON P.MOD_ID = M3.MEMBER_ID
+		 WHERE 1=1
+<![CDATA[		   
+		   AND P.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')
+		   AND P.REG_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d')+ INTERVAL 1 DAY ]]>
+		 
+		<if test="kCarNo neq null and kCarNo neq ''" >
+			AND P.CAR_NO LIKE '%${kCarNo}%'
+		</if>
+ 	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND P.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kPaymentGubn neq null and kPaymentGubn neq ''" >
+			AND P.PAY_GUBN = #{kPaymentGubn}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 ORDER BY P.REG_DT DESC
+	</select>
+</mapper>

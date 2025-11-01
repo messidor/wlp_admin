@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sms.smsUtil">
+    <insert id="insert_ShortMessagingService">
+        INSERT INTO SDK_SMS_SEND (
+            MSG_ID,         USER_ID,        SCHEDULE_TYPE,      SUBJECT,        NOW_DATE,
+            SEND_DATE,      CALLBACK,       DEST_COUNT,         DEST_INFO,      SMS_MSG,
+            RESERVED1
+        ) VALUES (
+            #{msgId},       #{userId},      0,                  #{subject},     DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+            DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),   #{callback},    #{destCount},   #{destInfo},        #{sendMsg},
+            #{smsCode}
+        )
+    </insert>
+    
+    <insert id="insert_MultimediaMessagingService">
+        INSERT INTO SDK_MMS_SEND ( 
+            MSG_ID,         USER_ID,        SCHEDULE_TYPE,      SUBJECT,        NOW_DATE,
+            SEND_DATE,      CALLBACK,       DEST_COUNT,         DEST_INFO,      MSG_TYPE,
+            MMS_MSG,        CONTENT_COUNT,  CONTENT_DATA,       RESERVED1
+        ) VALUES (
+            #{msgId},       #{userId},      0,                  #{subject},     DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+            DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),   #{callback},    #{destCount},   #{destInfo},        0,
+            #{sendMsg},      0,             '',                 #{smsCode}
+        )
+    </insert>
+    
+    <select id="select_SmsNextValue" parameterType="commonMap" resultType="commonMap">
+        SELECT fn_make_seq('SDK_SMS_SEQ') NEXTVAL FROM DUAL
+    </select>
+    
+    <select id="select_MmsNextValue" parameterType="commonMap" resultType="commonMap">
+        SELECT fn_make_seq('SDK_MMS_SEQ') NEXTVAL FROM DUAL
+    </select>
+    
+    <select id="select_SmsReport" parameterType="commonMap" resultType="commonMap">
+        SELECT A.MSG_ID, A.NOW_DATE, A.SEND_DATE, A.SUCC_COUNT, A.FAIL_COUNT, B.TCS_RESULT, B.STATUS_TEXT
+          FROM SDK_SMS_REPORT A
+          LEFT OUTER JOIN SDK_SMS_REPORT_DETAIL B
+            ON A.MSG_ID = B.MSG_ID
+           AND A.MSG_ID = #{msgId}
+    </select>
+    
+    <select id="select_MmsReport" parameterType="commonMap" resultType="commonMap">
+        SELECT A.MSG_ID, A.NOW_DATE, A.SEND_DATE, A.SUCC_COUNT, A.FAIL_COUNT, B.TCS_RESULT, B.STATUS_TEXT
+          FROM SDK_MMS_REPORT A
+          LEFT OUTER JOIN SDK_MMS_REPORT_DETAIL B
+            ON A.MSG_ID = B.MSG_ID
+         WHERE A.MSG_ID = #{msgId}
+    </select>
+    
+    <select id="select_Template" parameterType="commonMap" resultType="commonMap">
+        SELECT SMS_TPL, MMS_TPL
+          FROM T_MSG_TEMPLATE
+         WHERE TPL_CODE = #{tplCode}
+    </select>
+    
+    <insert id="insert_MessageLog">
+        INSERT INTO T_SMS_LOG (
+            SMS_CODE,
+            MEMBER_ID,
+            RECV_PHONE,
+            RECV_NAME,
+            SEND_PHONE,
+            TPL_CODE,
+            MSG_TYPE_PARENT,
+            MSG_TYPE,
+            BYTE_LENGTH,
+            SUBJECT,
+            MSG_CONTENTS,
+            REG_ID,
+            REG_DT
+        ) VALUES (
+            #{smsCode},
+            #{recvId},
+            #{recvPhone},
+            #{recvName},
+            #{sendPhone},
+            #{tplCode},
+            'MSG_TYPE',
+            #{msgType},
+            #{byteLength},
+            #{subject},
+            #{msgContents},
+            #{recvId},
+            NOW()
+        )
+    </insert>
+    
+    <select id="select_MessageParameters" parameterType="commonMap" resultType="commonMap">
+        SELECT VAR_EN, VAR_KO
+          FROM T_MSG_VAR
+         WHERE USE_YN = 'Y'
+    </select>
+</mapper>

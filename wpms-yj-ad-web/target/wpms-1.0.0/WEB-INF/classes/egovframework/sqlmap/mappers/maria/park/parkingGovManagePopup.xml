@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingGovManagePopup">
+	
+	<select id="select_bankInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT A.P_GOV_ACCOUNT_CODE, IFNULL(A.P_GOV_ACCOUNT_NAME,'') P_GOV_ACCOUNT_NAME, IFNULL(A.P_GOV_ACCOUNT_NAME,'') P_GOV_ACCOUNT_NAME, IFNULL(A.P_GOV_ACCOUNT_NUMBER,'') P_GOV_ACCOUNT_NUMBER
+     		 , IFNULL(A.P_GOV_BANK_NAME,'') P_GOV_BANK_NAME, A.BILLING_MID, A.ONCE_MID, A.ONCE_MID_PW, 'N' INCLUDE_VALUE, A.MERCHANT_KEY, A.ONCE_MERCHANT_KEY
+  		  FROM T_PARKING_GOV_BANK_INFO A
+ 		 WHERE A.USE_YN = 'Y'
+  		   AND A.P_GOV_CODE = #{hGovCode}
+	</select>
+	
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT PGI.P_GOV_CODE, PGI.P_GOV_NAME, PGI.P_GOV_TEL
+		     , PGI.P_GOV_POST, PGI.P_GOV_ADDR, PGI.P_GOV_ADDR2
+			 , PGI.P_MANAGER, PGI.P_MANAGER_PHONE, PGI.P_MANAGER_EMAIL, PGI.BILLING_MID
+			 , PGI.USE_YN, PGI.P_GOV_TEL_RECV, PGI.RECV_YN
+			 , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'USE_YN' AND CODE_ID = PGI.USE_YN) AS USE_YN_NAME
+			 , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PGI.REG_ID) as REG_ID
+		     , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PGI.MOD_ID) as MOD_ID
+			 , DATE_FORMAT(PGI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			 , DATE_FORMAT(PGI.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			 , ONCE_MID, BILLING_MID_PW, ONCE_MID_PW
+		  FROM T_PARKING_GOV_INFO PGI
+		 WHERE PGI.P_GOV_CODE = #{hGovCode}
+	</select>
+	
+	<select id="select_useGov" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) USE_CNT
+		  FROM T_PARKING_INFO
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</select>
+	
+	<select id="select_useYnGov" parameterType="commonMap" resultType="commonMap">
+		SELECT USE_YN
+		  FROM T_PARKING_GOV_INFO
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</select>
+	
+	<select id="select_new_gov_key" parameterType="commonMap" resultType="commonMap">
+		SELECT fn_make_key('PARKING_GOV_CODE') NEW_PARKING_GOV_CODE
+	      FROM DUAL
+	</select>
+	
+	<select id="select_govBankInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) ACCOUNT_CNT
+		  FROM T_PARKING_INFO
+		 WHERE P_GOV_CODE = #{hGovCode}
+		   AND P_GOV_ACCOUNT_CODE = #{grdPGovAccountCode}
+	</select>
+	
+	<insert id="insert_list">
+		INSERT INTO T_PARKING_GOV_INFO (
+			   		  P_GOV_CODE, P_GOV_NAME, P_GOV_TEL, P_GOV_POST, P_GOV_ADDR
+			   		, P_GOV_ADDR2, P_MANAGER, P_MANAGER_PHONE
+			   		, USE_YN_PARENT, USE_YN, REG_ID
+			   		, REG_DT, MOD_ID, MOD_DT
+			   		, P_GOV_TEL_RECV, RECV_YN_PARENT, RECV_YN
+	  		 ) VALUES ( #{newGovCode}, #{pGovName}, #{pGovTel}, #{pGovPost}, #{pGovAddr}
+	  		 		, #{pGovAddr2}, #{pManager}, #{pManagerPhone}
+	  		 	    , 'USE_YN', #{useYn}, #{userId}
+	  		 	    , NOW(), #{userId}, NOW()
+	  		 	    , #{pGovTelRecv}, 'USE_YN', #{recvYn}
+			 )
+	</insert>
+	
+	<update id="update_list">
+		UPDATE T_PARKING_GOV_INFO
+		   SET P_GOV_NAME = #{pGovName}
+		     , P_GOV_TEL = #{pGovTel}
+		     , P_GOV_POST = #{pGovPost}
+		     , P_GOV_ADDR = #{pGovAddr}
+		     , P_GOV_ADDR2 = #{pGovAddr2}
+		     , P_MANAGER = #{pManager}
+		     , P_MANAGER_PHONE = #{pManagerPhone}
+		     , USE_YN = #{useYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		     , P_GOV_TEL_RECV = #{pGovTelRecv}
+		     , RECV_YN = #{recvYn}
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</update>
+	
+	<update id="update_parkingInfo">
+		UPDATE T_PARKING_INFO
+		   SET P_GOV_CODE = null
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</update>
+	
+	<update id="update_parkingGovServiceInfo">
+		UPDATE T_PARKING_GOV_INFO
+		   SET P_SERVICE_KEY = #{pServiceKey}
+		     , P_SERVICE_KEY_YN_PARENT = 'USE_YN'
+		     , P_SERVICE_KEY_YN = 'Y'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</update>
+	
+	<delete id="delete_list">
+		DELETE FROM T_PARKING_GOV_INFO
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</delete>
+	
+	<insert id="insert_govBankInfo">
+		INSERT INTO T_PARKING_GOV_BANK_INFO (
+            		P_GOV_CODE, P_GOV_ACCOUNT_CODE, P_GOV_ACCOUNT_NAME, P_GOV_ACCOUNT_NUMBER
+          		  , P_GOV_BANK_NAME, USE_YN_PARENT, USE_YN, REG_ID, MERCHANT_KEY
+          		  , REG_DT, MOD_ID, MOD_DT, BILLING_MID, ONCE_MID, ONCE_MID_PW
+          		  , ONCE_MERCHANT_KEY
+          		  ) VALUES (
+					#{newGovCode}, FN_MAKE_KEY('GOV_ACCOUNT_CODE'), #{grdPGovAccountName}, #{grdPGovAccountNumber}
+				  , #{grdPGovBankName}, 'USE_YN', 'Y', #{userId}, #{grdMerchantKey}
+				  , NOW(), #{userId}, NOW(), #{grdBillingMid}, #{grdOnceMid}, #{grdOnceMidPw}
+				  , #{grdOnceMerchantKey}  
+          		  )
+	</insert>
+	
+	<update id="update_govBankInfo">
+		UPDATE T_PARKING_GOV_BANK_INFO
+		   SET P_GOV_ACCOUNT_NAME = #{grdPGovAccountName}
+		     , P_GOV_ACCOUNT_NUMBER = #{grdPGovAccountNumber}
+		     , P_GOV_BANK_NAME = #{grdPGovBankName}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		     , MERCHANT_KEY = #{grdMerchantKey}
+		     , BILLING_MID = #{grdBillingMid}
+		     , ONCE_MID = #{grdOnceMid}
+		     , ONCE_MID_PW = #{grdOnceMidPw}
+		     , ONCE_MERCHANT_KEY = #{grdOnceMerchantKey}  
+		 WHERE P_GOV_CODE = #{hGovCode}
+		   AND P_GOV_ACCOUNT_CODE = #{grdPGovAccountCode}
+	</update>
+	
+	<update id="delete_govBankInfo">
+		UPDATE T_PARKING_GOV_BANK_INFO
+		   SET USE_YN = 'N'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_GOV_CODE = #{hGovCode}
+		   AND P_GOV_ACCOUNT_CODE = #{grdPGovAccountCode}
+	</update>
+	
+	<update id="delete_allGovBankInfo">
+		UPDATE T_PARKING_GOV_BANK_INFO
+		   SET USE_YN = 'N'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_GOV_CODE = #{hGovCode}
+	</update>
+</mapper>

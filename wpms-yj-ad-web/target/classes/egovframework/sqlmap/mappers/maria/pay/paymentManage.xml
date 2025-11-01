@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.paymentManage">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		  SELECT ROW_NUMBER() OVER(ORDER BY MAX(Z.REG_DT) DESC) AS NUM
+		  	   , MAX(Z.PARKING_NAME) AS PARKING_NAME
+	  		   , MAX(Z.CAR_NO) AS CAR_NO
+	  		   , IFNULL(MAX(Z.MEMBER_NAME), '탈퇴한 사용자') AS MEMBER_NAME
+	  		   , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+	  		   , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+	  		   , MAX(Z.PAY_GUBN) AS PAY_GUBN
+	  		   , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+			   , GROUP_CONCAT(Z.CHARGE_NO SEPARATOR ',') AS CHARGE_NO
+	  		   , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+	  		   , CASE WHEN MAX(Z.MANUAL_YN) = 'Y' THEN CONCAT(MAX(Z.PAYMENT_GUBN_NAME) , '(관리자)') ELSE MAX(Z.PAYMENT_GUBN_NAME) END AS PAYMENT_GUBN_NAME
+	  		   , DATE_FORMAT(MAX(Z.REG_DT), '%Y-%m-%d %H:%i:%s') AS REG_DT
+	  		   , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+	  		   , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+	  		   , Z.PAY_CODE
+	  		   , MAX(Z.PAY_SEQ) PAY_SEQ
+	  		   , '상세보기' AS PAYMENT_MANAGE
+	  		   , CASE WHEN MAX(Z.PARKING_PRICE_ORIG) > 0 AND MAX(Z.PAY_GUBN) = 'PG001' AND MAX(Z.MANUAL_YN) = 'N' THEN '결제취소' ELSE '' END AS PAY_CANCEL_GUBN
+	  		   , CASE WHEN MAX(Z.PARKING_PRICE_ORIG) > 0 AND MAX(Z.PAY_GUBN) = 'PG001' AND MAX(Z.MANUAL_YN) = 'N' THEN '재결제' ELSE '' END AS PAY_RE_GUBN
+	  		   , Z.MEMBER_ID
+	  		   , MAX(Z.TOTAL_PARKING_FEE) AS TOTAL_PARKING_FEE
+	  		   , MAX(Z.DISCOUNT_FEE) AS DISCOUNT_FEE
+	  		   , MAX(Z.PRE_PAY_FEE) AS PRE_PAY_FEE
+	  		   , CASE WHEN MAX(Z.PAY_GUBN) = 'PG001' THEN ' '
+			  		  WHEN MAX(Z.CONFIRM_ID) IS NULL THEN ' '
+	           		  WHEN MAX(Z.CONFIRM_ID) IN (SELECT USER_ID FROM T_USER_INFO) THEN MAX(Z.CONFIRM_NAME_U)
+ 		   			  ELSE MAX(Z.CONFIRM_NAME_M)
+ 		   			  END AS CONFIRM_NAME
+	  	    FROM ( SELECT C.PARKING_NAME
+			  	        , A.CAR_NO
+			  	        , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+			  	        , B.MEMBER_PHONE
+			  	        , CONCAT(FORMAT(IFNULL(F.PAY_PRICE,0), 0) , '원') AS PARKING_PRICE
+			  	        , IFNULL(F.PAY_PRICE,0) AS PARKING_PRICE_ORIG
+			  	        , A.PAY_GUBN
+			  	        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE A.PAY_GUBN_PARENT = PARENT_CODE_ID AND A.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+			  	        , A.CHARGE_NO
+			  	        , A.PARKING_NO
+			  	        , E.PAYMENT_GUBN
+			  	        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = E.PAYMENT_GUBN_PARENT AND CODE_ID = E.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+			  	        , C.P_GOV_CODE
+			  	        , D.P_GOV_NAME
+			  	        , F.PAY_CODE
+			  	        , F.PAY_SEQ
+			  	        , CASE WHEN F.CANCEL_YN = 'Y' THEN PPC.CONFIRM_DT
+			  	       		   ELSE F.REG_DT 
+			  	       		   END AS REG_DT
+			  	        , A.MEMBER_ID
+			  	        , F.MANUAL_YN
+			  	        , F.CONFIRM_ID
+			  	        , IFNULL((SELECT MEMBER_NAME FROM T_MEMBER_INFO WHERE MEMBER_ID = F.CONFIRM_ID), '탈퇴한 사용자') AS CONFIRM_NAME_M
+			  	        , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = F.CONFIRM_ID ) AS CONFIRM_NAME_U
+			  	        , CONCAT(FORMAT(IFNULL(A.TOTAL_PARKING_PRICE,0), 0) , '원') AS TOTAL_PARKING_FEE
+			  	        , CONCAT(FORMAT(IFNULL(A.DISCOUNT_PRICE,0), 0) , '원') AS DISCOUNT_FEE
+			  	        , CONCAT(FORMAT(IFNULL(A.PRE_PAY_FEE,0), 0) , '원') AS PRE_PAY_FEE
+			   	     FROM T_PARKING_CHARGE A
+			   	    INNER JOIN T_PARKING_PAY F
+			   	       ON A.PAY_CODE = F.PAY_CODE
+			        LEFT OUTER JOIN T_MEMBER_INFO B
+			           ON A.MEMBER_ID = B.MEMBER_ID
+			        INNER JOIN T_PARKING_INFO C
+			           ON A.PARKING_NO = C.PARKING_NO
+			        INNER JOIN T_PARKING_GOV_INFO D
+			           ON C.P_GOV_CODE = D.P_GOV_CODE
+			        INNER JOIN ( SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+				                   FROM T_PARKING_PAY V
+				                  INNER JOIN ( SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+												 FROM T_PARKING_PAY
+											    GROUP BY PAY_CODE
+									   ) V2
+								      ON V.PAY_CODE = V2.PAY_CODE
+									 AND V.PAY_SEQ = V2.PAY_SEQ
+			            ) E
+			           ON A.PAY_CODE = E.PAY_CODE
+			         LEFT OUTER JOIN T_PARKING_PAY_CANCEL PPC
+			           ON F.PAY_CODE = PPC.PAY_CODE
+			          AND F.PAY_SEQ = PPC.PAY_SEQ
+				    WHERE F.CONFIRM_YN != 'C'
+				      AND C.USE_YN = 'Y'
+				      AND F.PAY_PRICE > 0
+				      <!-- AND A.PAY_GUBN IN ('PG001', 'PG002', 'PG003') -->
+			  ) Z
+          WHERE 1=1
+		  <![CDATA[AND Z.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')]]>
+		  <![CDATA[AND Z.REG_DT <= ( STR_TO_DATE(#{endDate}, '%Y-%m-%d') + INTERVAL 1 DAY )]]>
+
+		<if test="kCarNumber neq null and kCarNumber neq ''" >
+			AND Z.CAR_NO LIKE '%${kCarNumber}%'
+		</if>
+		<if test="kMemberName neq null and kMemberName neq ''" >
+			AND Z.MEMBER_NAME = #{kMemberName}
+		</if>
+ 	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND Z.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kPaymentGubn neq null and kPaymentGubn neq ''" >
+			AND Z.PAYMENT_GUBN = #{kPaymentGubn}
+		</if>
+			AND Z.PAY_GUBN IN (${kStatus})
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND Z.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 GROUP BY Z.PAY_CODE, Z.MEMBER_ID
+		 ORDER BY MAX(Z.REG_DT) DESC
+	</select>
+
+	<update id="Update_CancelData">
+		UPDATE T_PARKING_PAY
+		   SET CANCEL_REJECT = #{reqReason}
+			 , CONFIRM_YN = 'C'
+			 , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		 WHERE PAY_CODE = #{payCode}
+		   AND PAY_SEQ = #{prevSeq}
+	</update>
+
+	<update id="Update_CancelData2">
+		UPDATE T_PARKING_PAY_CANCEL
+		   SET CONFIRM_GUBN = 'Y'
+		     , REJECT_REASON = #{reqReason}
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , CANCEL_STATUS = 'C'
+		   	 , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		 WHERE PAY_CODE = #{payCode}
+		   AND PAY_SEQ = #{paySeq}
+	</update>
+
+	<update id="Update_Cancel_ParkingCharge">
+		UPDATE T_PARKING_CHARGE
+		   SET PAY_GUBN = 'PG001'
+		     , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		 WHERE PAY_CODE = #{payCode}
+	</update>
+
+	<select id="Select_PayGubn" parameterType="commonMap" resultType="commonMap">
+		SELECT PAY_CODE, MAX(PAY_GUBN) PAY_GUBN
+		  FROM T_PARKING_CHARGE
+		 WHERE PAY_CODE = #{payCode}
+		 GROUP BY PAY_CODE
+	</select>
+
+	<select id="Select_payInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT A.BILLING_MID, A.ONCE_MID, A.ONCE_MID_PW, A.MERCHANT_KEY
+		  FROM T_PARKING_GOV_BANK_INFO A
+		 INNER JOIN (
+		 				SELECT P_GOV_CODE, P_GOV_ACCOUNT_CODE
+						  FROM T_PARKING_INFO
+					     WHERE PARKING_NO = (
+											SELECT PARKING_NO
+						   				      FROM T_PARKING_CHARGE
+										     WHERE CHARGE_NO = #{kChargeNo}
+											)
+		     ) B
+		   ON A.P_GOV_CODE = B.P_GOV_CODE
+		  AND A.P_GOV_ACCOUNT_CODE = B.P_GOV_ACCOUNT_CODE
+	</select>
+
+	<select id="select_maxSeq" parameterType="commonMap" resultType="commonMap">
+			SELECT IFNULL(MAX(PAY_SEQ),1) PAY_SEQ
+			  FROM T_PARKING_PAY_CANCEL
+			 WHERE PAY_CODE = #{payCode}
+	</select>
+
+	<select id="select_pay_maxSeq" parameterType="commonMap" resultType="commonMap">
+			SELECT IFNULL(MAX(PAY_SEQ),1) PAY_SEQ
+			  FROM T_PARKING_PAY
+			 WHERE PAY_CODE = #{payCode}
+	</select>
+
+	<select id="Select_PayCode" parameterType="commonMap" resultType="commonMap">
+		SELECT REG_ID MEMBER_ID
+		  FROM T_PARKING_PAY
+		 WHERE PAY_CODE = #{payCode}
+		   AND PAY_SEQ = #{prevSeq}
+	</select>
+
+	<update id="Insert_SuccessData">
+		INSERT INTO T_PARKING_PAY (
+		            PAY_CODE, PAY_SEQ, PAY_DATE, PAY_PRICE
+		          , PC_GUBN_PARENT, PC_GUBN, CREDIT_ALIAS, CREDIT_NO
+		          , CREDIT_NO2, CREDIT_NO3, CREDIT_NO4, CREDIT_EXP_DATE
+		 	      , CANCEL_YN_PARENT, CANCEL_YN, CANCEL_REASON, CANCEL_REJECT
+		     	  , FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID
+			      , CONFIRM_DT, REG_ID, REG_DT, MOD_ID
+		     	  , MOD_DT, T_ID, REDUCTION_CODE, PAYMENT_GUBN_PARENT
+			      , PAYMENT_GUBN
+				  ) SELECT PAY_CODE, ( #{prevSeq} + 1) PAY_SEQ, PAY_DATE, PAY_PRICE
+				         , PC_GUBN_PARENT,'C' PC_GUBN, CREDIT_ALIAS, CREDIT_NO
+				         , CREDIT_NO2, CREDIT_NO3, CREDIT_NO4, CREDIT_EXP_DATE
+				         , CANCEL_YN_PARENT, CANCEL_YN, CANCEL_REASON, CANCEL_REJECT
+				         , FILE_REL_KEY, CONFIRM_YN_PARENT, 'Y' CONFIRM_YN, #{userId} CONFIRM_ID
+				         , NOW() CONFIRM_DT, REG_ID, REG_DT, #{userId} MOD_ID
+				         , NOW() MOD_DT, T_ID, REDUCTION_CODE, PAYMENT_GUBN_PARENT
+				         , PAYMENT_GUBN
+				      FROM T_PARKING_PAY
+				     WHERE PAY_CODE = #{payCode}
+				       AND PAY_SEQ = #{prevSeq}
+	</update>
+
+	<update id="Update_SuccessData2">
+		UPDATE T_PARKING_PAY_CANCEL
+		   SET CONFIRM_GUBN = 'Y'
+		     , CANCEL_STATUS = 'B'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		   	 , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		 WHERE PAY_CODE = #{payCode}
+		   AND PAY_SEQ = #{paySeq}
+	</update>
+
+	<update id="Update_Success_ParkingCharge">
+		UPDATE T_PARKING_CHARGE
+		   SET PAY_GUBN = #{payGubn}
+		     , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		 WHERE PAY_CODE = #{payCode}
+	</update>
+
+	<select id="select_cardInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT CREDIT_ALIAS, CREDIT_NO, CREDIT_NO2, CREDIT_NO3, CREDIT_NO4
+	      FROM T_PARKING_PAY
+	     WHERE PAY_CODE = #{payCode}
+	       AND PAY_SEQ = #{prevSeq}
+	</select>
+
+	<select id="Select_Pay_Seq" parameterType="commonMap" resultType="commonMap">
+		SELECT (COUNT(*)+1) PAY_SEQ
+		  FROM T_PARKING_PAY
+		 WHERE PAY_CODE = #{payCode}
+		 GROUP BY PAY_CODE
+	</select>
+
+	<select id="Select_Reduction_Code" parameterType="commonMap" resultType="commonMap">
+		SELECT A.REDUCTION_RATE
+		  FROM T_REDUCTION_INFO A
+		 INNER JOIN T_PARKING_REDUCTION B
+		    ON A.REDUCTION_CODE = B.REDUCTION_CODE
+		 WHERE A.REDUCTION_CODE = (
+		 							SELECT REDUCTION_CODE
+									  FROM T_PARKING_PAY
+									 WHERE PAY_CODE = #{payCode}
+									   AND PAY_SEQ = #{prevSeq}
+		 						)
+		 AND B.PARKING_NO = (
+		                      	SELECT PARKING_NO
+								  FROM T_PARKING_CHARGE
+								 WHERE CHARGE_NO = #{kChargeNo}
+		                      )
+	</select>
+
+	<update id="Update_Parking_Charge">
+		UPDATE T_PARKING_CHARGE
+		   SET PAY_CODE = #{payCode}
+		     , PAY_GUBN = #{payGubn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE CHARGE_NO = #{kChargeNo}
+	</update>
+
+	<select id="Select_Pay_Card" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(CREDIT_NO) CREDIT_NO, MAX(CREDIT_NO2) CREDIT_NO2, MAX(CREDIT_NO3) CREDIT_NO3, MAX(CREDIT_NO4) CREDIT_NO4, MAX(CREDIT_EXP_DATE) CREDIT_EXP_DATE, MAX(REG_ID) MEMBER_ID, MAX(CREDIT_ALIAS) CREDIT_ALIAS
+		  FROM T_PARKING_PAY
+		 WHERE PAY_CODE = #{payCode}
+	</select>
+
+	<select id="Select_BillTokenKey" parameterType="commonMap" resultType="commonMap">
+		SELECT BILLTOKENKEY
+		  FROM T_MEMBER_CREDIT
+		 WHERE CREDIT_NO = #{creditNo}
+		   AND CREDIT_NO2 = #{creditNo2}
+		   AND CREDIT_NO4 = #{creditNo4}
+		   AND CREDIT_EXP_DATE = #{creditExpDate}
+		   AND MEMBER_ID = #{memberId}
+		   AND REP_YN = 'Y'
+		   AND AUTO_PAY_YN = 'Y'
+	</select>
+
+	<select id="Select_MemberInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT MEMBER_NAME, MEMBER_PHONE, MEMBER_EMAIL
+		  FROM T_MEMBER_INFO
+		 WHERE MEMBER_ID = #{memberId}
+	</select>
+
+	<insert id="Insert_Parking_Pay">
+		INSERT INTO T_PARKING_PAY (
+ 			PAY_CODE, PAY_SEQ, PAY_DATE, PAY_PRICE
+ 		  , PC_GUBN_PARENT, PC_GUBN, CREDIT_ALIAS, CREDIT_NO
+ 		  , CREDIT_NO2, CREDIT_NO3, CREDIT_NO4, CREDIT_EXP_DATE
+ 		  , CANCEL_YN_PARENT, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+ 		  , REG_ID, REG_DT, MOD_ID, MOD_DT, PAYMENT_GUBN_PARENT
+          , PAYMENT_GUBN
+          ) VALUES (
+            #{payCode}, #{paySeq}, NOW(), #{calPrice}
+          , 'PC_GUBN', 'P', #{creditAlias}, #{creditNo}
+          , #{creditNo2}, #{creditNo3}, #{creditNo4}, #{creditExpDate}
+          , 'CANCEL_YN', 'CONFIRM_YN', 'Y', #{userId}, NOW()
+          , #{userId}, NOW(), #{userId}, NOW(), 'PAYMENT_GUBN'
+          , #{paymentGubn}
+          )
+	</insert>
+
+	<select id="select_Gov_Tel" parameterType="commonMap" resultType="commonMap">
+		SELECT GI.P_GOV_TEL,GI.P_GOV_NAME 
+		  FROM T_PARKING_CHARGE PC
+    	 INNER JOIN T_PARKING_INFO PI
+		    ON PC.PARKING_NO = PI.PARKING_NO
+	     INNER JOIN T_PARKING_GOV_INFO GI
+		    ON PI.P_GOV_CODE = GI.P_GOV_CODE
+	     WHERE PC.MEMBER_ID = #{memberId}
+		   AND PC.CHARGE_NO = #{kChargeNo}
+	</select>
+
+	<select id="select_Gov_Tel_Out" parameterType="commonMap" resultType="commonMap">
+		SELECT GI.P_GOV_TEL,GI.P_GOV_NAME 
+		  FROM T_PARKING_CHARGE PC
+    	 INNER JOIN T_PARKING_INFO PI
+		    ON PC.PARKING_NO = PI.PARKING_NO
+	     INNER JOIN T_PARKING_GOV_INFO GI
+		    ON PI.P_GOV_CODE = GI.P_GOV_CODE
+	     WHERE PC.MEMBER_ID = #{memberId}
+		   AND PC.CHARGE_NO = #{govChargeNo}
+	</select>
+	
+	<select id="Select_CancelPopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+ 	         , A.CAR_NO
+ 	         , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+ 	         , CONCAT(FORMAT(IFNULL(F.PAY_PRICE,0), 0) , '원') AS PAY_PRICE
+ 	         , A.CHARGE_NO
+ 	         , A.PARKING_NO
+ 	         , F.PAY_CODE
+ 	         , DATE_FORMAT(F.REG_DT,'%Y-%m-%d %H:%i:%s') AS PAY_DT
+ 	         , F.T_ID
+ 	         , F.PAY_PRICE AS H_PRICE
+ 	         , DATE_FORMAT(CH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') AS P_ENT_DT
+			 , DATE_FORMAT(CH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') AS P_OUT_DT
+			 , CONCAT(FORMAT(IFNULL(A.TOTAL_PARKING_PRICE, 0), 0) , '원') AS TOTAL_PARKING_FEE
+			 , CONCAT(FORMAT(IFNULL(A.DISCOUNT_PRICE, 0), 0) , '원') AS DISCOUNT_FEE
+			 , CONCAT(FORMAT(IFNULL(A.PRE_PAY_FEE, 0), 0) , '원') AS PRE_PAY_FEE
+   	      FROM T_PARKING_CHARGE A
+   	     INNER JOIN T_PARKING_PAY F
+   	        ON A.PAY_CODE = F.PAY_CODE
+          LEFT OUTER JOIN T_MEMBER_INFO B
+            ON A.MEMBER_ID = B.MEMBER_ID
+         INNER JOIN T_PARKING_INFO C
+            ON A.PARKING_NO = C.PARKING_NO
+         INNER JOIN T_PARKING_GOV_INFO D
+            ON C.P_GOV_CODE = D.P_GOV_CODE
+		 INNER JOIN ( 
+		 				SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+				          FROM T_PARKING_PAY V
+				         INNER JOIN ( 
+				         				SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+										  FROM T_PARKING_PAY
+										 GROUP BY PAY_CODE
+							 ) V2
+						    ON V.PAY_CODE = V2.PAY_CODE
+						   AND V.PAY_SEQ = V2.PAY_SEQ
+			 ) E
+			ON A.PAY_CODE = E.PAY_CODE
+		  LEFT OUTER JOIN T_PARKING_CAR_HISTORY CH
+		    ON A.HISTORY_CODE = CH.HISTORY_CODE
+		   AND A.CAR_NO = CH.CAR_NO
+		   AND A.MEMBER_ID = CH.MEMBER_ID
+		   AND A.PARKING_NO = CH.PARKING_NO
+		 WHERE F.CONFIRM_YN != 'C'
+		   AND A.CHARGE_NO = #{kChargeNo}
+	</select>
+	
+	<select id="Select_PayPopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+ 	         , A.CAR_NO
+ 	         , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+ 	         , FORMAT(IFNULL(F.PAY_PRICE,0), 0) AS PAY_PRICE
+ 	         , A.CHARGE_NO
+ 	         , A.PARKING_NO
+ 	         , F.PAY_CODE
+ 	         , DATE_FORMAT(F.REG_DT,'%Y-%m-%d %H:%i:%s') AS PAY_DT
+ 	         , F.T_ID
+ 	         , F.PAY_PRICE AS H_PRICE
+ 	         , DATE_FORMAT(CH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') AS P_ENT_DT
+			 , DATE_FORMAT(CH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') AS P_OUT_DT
+   	      FROM T_PARKING_CHARGE A
+   	     INNER JOIN T_PARKING_PAY F
+   	        ON A.PAY_CODE = F.PAY_CODE
+          LEFT OUTER JOIN T_MEMBER_INFO B
+            ON A.MEMBER_ID = B.MEMBER_ID
+         INNER JOIN T_PARKING_INFO C
+            ON A.PARKING_NO = C.PARKING_NO
+         INNER JOIN T_PARKING_GOV_INFO D
+            ON C.P_GOV_CODE = D.P_GOV_CODE
+		 INNER JOIN ( 
+		 				SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+				          FROM T_PARKING_PAY V
+				         INNER JOIN ( 
+				         				SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+										  FROM T_PARKING_PAY
+										 GROUP BY PAY_CODE
+							 ) V2
+						    ON V.PAY_CODE = V2.PAY_CODE
+						   AND V.PAY_SEQ = V2.PAY_SEQ
+			 ) E
+			ON A.PAY_CODE = E.PAY_CODE
+		  LEFT OUTER JOIN T_PARKING_CAR_HISTORY CH
+		    ON A.HISTORY_CODE = CH.HISTORY_CODE
+		   AND A.CAR_NO = CH.CAR_NO
+		   AND A.MEMBER_ID = CH.MEMBER_ID
+		   AND A.PARKING_NO = CH.PARKING_NO
+		 WHERE A.CHARGE_NO = #{kChargeNo}
+	</select>
+	
+	<select id="Select_RePayPopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+ 	         , A.CAR_NO
+ 	         , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+ 	         , CONCAT(FORMAT(IFNULL(F.PAY_PRICE,0), 0) , '원') AS PAY_PRICE
+ 	         , A.CHARGE_NO
+ 	         , A.PARKING_NO
+ 	         , F.PAY_CODE
+ 	         , DATE_FORMAT(F.REG_DT,'%Y-%m-%d %H:%i:%s') AS PAY_DT
+ 	         , F.T_ID
+ 	         , F.PAY_PRICE AS H_PRICE
+ 	         , DATE_FORMAT(CH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') AS P_ENT_DT
+			 , DATE_FORMAT(CH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') AS P_OUT_DT
+			 , CONCAT(FORMAT(IFNULL(A.TOTAL_PARKING_PRICE, 0), 0) , '원') AS TOTAL_PARKING_FEE
+			 , CONCAT(FORMAT(IFNULL(A.DISCOUNT_PRICE, 0), 0) , '원') AS DISCOUNT_FEE
+			 , CONCAT(FORMAT(IFNULL(A.PRE_PAY_FEE, 0), 0) , '원') AS PRE_PAY_FEE
+   	      FROM T_PARKING_CHARGE A
+   	     INNER JOIN T_PARKING_PAY F
+   	        ON A.PAY_CODE = F.PAY_CODE
+          LEFT OUTER JOIN T_MEMBER_INFO B
+            ON A.MEMBER_ID = B.MEMBER_ID
+         INNER JOIN T_PARKING_INFO C
+            ON A.PARKING_NO = C.PARKING_NO
+         INNER JOIN T_PARKING_GOV_INFO D
+            ON C.P_GOV_CODE = D.P_GOV_CODE
+		 INNER JOIN ( 
+		 				SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+				          FROM T_PARKING_PAY V
+				         INNER JOIN ( 
+				         				SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+										  FROM T_PARKING_PAY
+										 GROUP BY PAY_CODE
+							 ) V2
+						    ON V.PAY_CODE = V2.PAY_CODE
+						   AND V.PAY_SEQ = V2.PAY_SEQ
+			 ) E
+			ON A.PAY_CODE = E.PAY_CODE
+		  LEFT OUTER JOIN T_PARKING_CAR_HISTORY CH
+		    ON A.HISTORY_CODE = CH.HISTORY_CODE
+		   AND A.CAR_NO = CH.CAR_NO
+		   AND A.MEMBER_ID = CH.MEMBER_ID
+		   AND A.PARKING_NO = CH.PARKING_NO
+		 WHERE F.CONFIRM_YN != 'C'
+		   AND A.CHARGE_NO = #{kChargeNo}
+	</select>
+	
+	<select id="Select_RePayPopupList2" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+ 	         , A.CAR_NO
+ 	         , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+ 	         , FORMAT(IFNULL(A.PARKING_PRICE,0), 0) AS PARKING_PRICE
+ 	         , A.CHARGE_NO
+ 	         , A.PARKING_NO
+ 	         , F.PAY_CODE
+ 	         , DATE_FORMAT(F.REG_DT,'%Y-%m-%d %H:%i:%s') AS PAY_DT
+ 	         , F.T_ID
+ 	         , IFNULL(A.PARKING_PRICE, 0) NEW_PARKING_PRICE
+ 	         , DATE_FORMAT(CH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') AS P_ENT_DT
+			 , DATE_FORMAT(CH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') AS P_OUT_DT
+   	      FROM T_PARKING_CHARGE A
+   	     INNER JOIN T_PARKING_PAY F
+   	        ON A.PAY_CODE = F.PAY_CODE
+          LEFT OUTER JOIN T_MEMBER_INFO B
+            ON A.MEMBER_ID = B.MEMBER_ID
+         INNER JOIN T_PARKING_INFO C
+            ON A.PARKING_NO = C.PARKING_NO
+         INNER JOIN T_PARKING_GOV_INFO D
+            ON C.P_GOV_CODE = D.P_GOV_CODE
+		 INNER JOIN ( 
+		 				SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+				          FROM T_PARKING_PAY V
+				         INNER JOIN ( 
+				         				SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+										  FROM T_PARKING_PAY
+										 GROUP BY PAY_CODE
+							 ) V2
+						    ON V.PAY_CODE = V2.PAY_CODE
+						   AND V.PAY_SEQ = V2.PAY_SEQ
+			 ) E
+			ON A.PAY_CODE = E.PAY_CODE
+		  LEFT OUTER JOIN T_PARKING_CAR_HISTORY CH
+		    ON A.HISTORY_CODE = CH.HISTORY_CODE
+		   AND A.CAR_NO = CH.CAR_NO
+		   AND A.MEMBER_ID = CH.MEMBER_ID
+		   AND A.PARKING_NO = CH.PARKING_NO
+		 WHERE F.CONFIRM_YN != 'C'
+		   AND A.CHARGE_NO in ( ${kChargeNo})
+	</select>
+</mapper>

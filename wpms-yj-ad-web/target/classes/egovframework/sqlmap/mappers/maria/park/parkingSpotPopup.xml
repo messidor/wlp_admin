@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingSpotPopup">
+    <select id="select_park" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_SPOT
+		     , PARKING_SPOT_NOW
+		  FROM T_PARKING_INFO
+		 WHERE PARKING_NO = #{hParkingNo}
+	</select>
+
+    <update id="update_parkingSpotInfo">
+		UPDATE T_PARKING_INFO
+		   SET PARKING_SPOT_NOW = #{parkingSpotNow}
+		 WHERE PARKING_NO = #{hParkingNo}
+	</update>
+</mapper>

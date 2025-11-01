@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.common.file">
+
+	<select id="select_file_info" parameterType="commonMap" resultType="commonMap">
+		SELECT CONCAT(B.FILE_NAME , IF(B.FILE_NAME IS NOT NULL, '.', '') , B.FILE_EXT) AS FILE_NAME, A.FILE_KEY, B.FILE_PATH
+		  FROM T_FILE_RELATION A
+		  LEFT OUTER JOIN T_FILE_INFO B
+		    ON A.FILE_KEY = B.FILE_KEY
+		 WHERE A.FILE_REL_KEY = #{fileRelKey}
+	</select>
+	
+	<delete id="delete_file_info">
+	    DELETE FROM T_FILE_INFO
+	     WHERE FILE_KEY = #{fileKey}
+	</delete>
+	
+	<delete id="delete_file_relation">
+	    DELETE FROM T_FILE_RELATION
+	    WHERE FILE_KEY = #{fileKey}
+	</delete>
+	
+	<select id="select_newRelKey" parameterType="commonMap" resultType="commonMap">
+		SELECT FN_MAKE_KEY('REL_KEY') AS NEW_FILE_REL_KEY
+		  FROM DUAL
+	</select>
+	
+	<select id="select_newKey" parameterType="commonMap" resultType="commonMap">
+		SELECT FN_MAKE_KEY('FILE_KEY') AS NEW_FILE_KEY
+		  FROM DUAL
+	</select>
+	
+	<insert id="insert_tempFileRelation">
+		INSERT INTO T_FILE_RELATION (
+			FILE_REL_KEY, FILE_KEY, REG_ID, REG_DT, MOD_ID, MOD_DT
+		) VALUES (
+		    #{fileRelKey}, #{fileKey}, #{memberId, jdbcType=VARCHAR}, NOW(), #{memberId, jdbcType=VARCHAR}, NOW()
+		)		
+	</insert>
+	
+	<insert id="insert_tempFile">
+		INSERT INTO T_FILE_INFO (
+			FILE_KEY, FILE_NAME, ORIG_FILE_NAME, FILE_PATH
+		  , FILE_EXT, MIME_TYPE, REG_ID, REG_DT, MOD_ID
+		  , MOD_DT
+		) VALUES (
+		    #{fileKey}, #{fileName}, #{origFileName}, #{filePath}
+		  , #{fileExt}, #{mimeType}, #{memberId, jdbcType=VARCHAR}, NOW(), #{memberId, jdbcType=VARCHAR}
+		  , NOW()
+		)		
+	</insert>
+	
+	<select id="Select_FileInformation" parameterType="commonMap" resultType="commonMap">
+        SELECT CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS STORED_FILE_NAME,
+               CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS ORIG_FILE_NAME,
+               F.FILE_PATH, F.ORIG_FILE_NAME, F.FILE_EXT, F.MIME_TYPE
+          FROM T_FILE_RELATION R
+         INNER JOIN T_FILE_INFO F
+            ON R.FILE_KEY = F.FILE_KEY
+         WHERE R.FILE_REL_KEY = #{fileRelKey}
+           AND R.FILE_KEY = #{fileKey}
+    </select>
+
+	<select id="Select_FileListByRefKey" parameterType="commonMap" resultType="commonMap">
+        SELECT R.FILE_REL_KEY
+             , F.FILE_KEY
+             , IFNULL(F.FILE_PATH, '') AS FILE_PATH
+             , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+             , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+             , CASE WHEN F.FILE_NAME IS NOT NULL THEN CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) ELSE '' END AS STORED_FILE_NAME
+             , CASE WHEN F.ORIG_FILE_NAME IS NOT NULL THEN CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) ELSE '' END AS ORIG_FILE_NAME
+          FROM T_FILE_RELATION R
+          LEFT OUTER JOIN T_FILE_INFO F
+            ON R.FILE_KEY = F.FILE_KEY
+         WHERE R.FILE_REL_KEY = #{fileRelKey}
+         ORDER BY R.FILE_KEY ASC
+	</select>
+	
+	<delete id="Delete_FileRelationSingle">
+	   DELETE FROM T_FILE_RELATION
+	    WHERE FILE_REL_KEY = #{fileRelKey}
+	      AND FILE_KEY = #{fileKey}
+	</delete>
+	
+    <!-- FILE_KEY 로 파일 정보 불러오기 -->
+    <select id="select_fileInfoByFileKey" parameterType="commonMap" resultType="commonMap">
+        SELECT FILE_NAME, FILE_PATH, FILE_EXT
+             , CONCAT(FILE_NAME , '.' , FILE_EXT) AS FULL_FILE_NAME
+          FROM T_FILE_INFO
+         WHERE FILE_KEY = #{fileKey}
+	</select>
+</mapper>

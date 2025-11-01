@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.groupUser">
+
+	<select id="select_groupList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.ROLE_ID, A.ROLE_NAME, B.CODE_NAME1 AS ROLE_GUBN
+             , '' STATE_COL
+          FROM T_SYS_ROLE_INFO A
+          LEFT OUTER JOIN T_SYS_COMCODE B
+            ON A.ROLE_GUBN_PARENT = B.PARENT_CODE_ID
+       	   AND A.ROLE_GUBN = B.CODE_ID
+         WHERE A.USE_YN = 'Y'	 
+
+		<if test="kRoleGubn neq null and kRoleGubn neq ''" >
+			AND A.ROLE_GUBN = #{kRoleGubn}
+		</if>
+		
+		<choose>
+			<when test ='kSearchGubn == "A"'>
+				AND A.ROLE_ID LIKE '%${kSearchName}%'
+			</when>
+			<when test ='kSearchGubn == "B"'>
+				AND A.ROLE_NAME LIKE '%${kSearchName}%'
+			</when>
+			<otherwise>
+				AND (A.ROLE_ID LIKE '%${kSearchName}%' OR A.ROLE_NAME LIKE '%${kSearchName}%')
+			</otherwise>
+		</choose>
+		
+		ORDER BY A.ROLE_ID ASC
+	</select>
+
+	<select id="select_userList" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN B.ROLE_ID IS NULL THEN 'N' ELSE 'Y' END AS INCLUDE_VALUE
+             , A.USER_ID, A.USER_NAME, A.USER_EMAIL, A.USER_PHONE, C.USER_NAME MOD_ID
+             , DATE_FORMAT(B.MOD_DT, '%Y-%m-%d %H:%i:%s') MOD_DT, '' STATE_COL
+          FROM T_USER_INFO A
+          LEFT OUTER JOIN T_SYS_USER_ROLE_INFO B
+            ON A.USER_ID = B.USER_ID
+           AND B.ROLE_ID = #{hRoleId}
+          LEFT OUTER JOIN T_USER_INFO C
+            ON B.MOD_ID = C.USER_ID
+         WHERE A.USE_YN = 'Y'
+		 
+		<if test="hRoleId eq null or hRoleId eq ''" >
+			AND 1=0
+		</if>
+		
+	</select>
+	
+	<insert id="insert_data">
+		INSERT INTO T_SYS_USER_ROLE_INFO (
+			   ROLE_ID, USER_ID, REG_ID, REG_DT
+			 , MOD_ID, MOD_DT
+		) VALUES (
+			   #{hRoleId}, #{grdUserId}, #{userId}, NOW()
+			 , #{userId}, NOW()
+		)
+		ON DUPLICATE KEY UPDATE
+			MOD_ID = #{userId}
+		  , MOD_DT = NOW()
+	</insert>
+	
+	<delete id="delete_data">
+		DELETE FROM T_SYS_USER_ROLE_INFO
+         WHERE ROLE_ID = #{hRoleId}
+           AND USER_ID = #{grdUserId}
+	</delete>
+	
+</mapper>

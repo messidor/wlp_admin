@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.offlineCouponParkingManage">
+
+	<select id="select_offCouponList" parameterType="commonMap" resultType="commonMap">
+		SELECT G.P_GOV_NAME, M.OFF_COUPON_CODE, M.P_GOV_CODE, M.OFF_COUPON_NAME
+			 , C1.CODE_NAME1 AS COUPON_USE_GUBN_NAME, C2.CODE_NAME1 AS DISCOUNT_GUBN_NAME, M.DISCOUNT
+		  FROM T_OFFLINE_COUPON_MASTER M
+		 INNER JOIN T_PARKING_GOV_INFO G
+			ON M.P_GOV_CODE = G.P_GOV_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+			ON M.COUPON_USE_GUBN_PARENT = C1.PARENT_CODE_ID
+		   AND M.COUPON_USE_GUBN = C1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C2
+			ON M.DISCOUNT_GUBN_PARENT = C2.PARENT_CODE_ID
+		   AND M.DISCOUNT_GUBN = C2.CODE_ID
+		 WHERE 1=1
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND M.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		<if test="kOffCouponName neq null and kOffCouponName neq ''" >
+		   AND M.OFF_COUPON_NAME LIKE '%${kOffCouponName}%'
+		</if>
+		 ORDER BY M.P_GOV_CODE, M.OFF_COUPON_CODE
+	</select>
+
+	<select id="select_parkingList" parameterType="commonMap" resultType="commonMap">
+		SELECT P.PARKING_NO, C1.CODE_NAME1 AS GUGUN_NAME, P.PARKING_NAME, UI.USER_NAME AS REG_NAME, CP.REG_DT
+			 , IF(CP.OFF_COUPON_CODE IS NULL, 'N', 'Y') AS INCLUDE_VALUE
+			 , '' AS STATE_COL
+		  FROM T_OFFLINE_COUPON_MASTER M
+		 INNER JOIN T_PARKING_INFO P
+			ON M.P_GOV_CODE = P.P_GOV_CODE
+		  LEFT OUTER JOIN T_OFFLINE_COUPON_PARKING CP
+			ON M.OFF_COUPON_CODE = CP.OFF_COUPON_CODE
+		   AND P.PARKING_NO = CP.PARKING_NO
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+			ON P.GUGUN_PARENT = C1.PARENT_CODE_ID
+		   AND P.GUGUN = C1.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+			ON CP.REG_ID = UI.USER_ID
+		 WHERE P.USE_YN = 'Y'
+		   AND P.API_VER_GUBN = '2'
+		   AND M.OFF_COUPON_CODE = #{hOffCouponCode}
+		<if test="kLocalGubn neq null and kLocalGubn neq ''" >
+		   AND P.GUGUN = #{kLocalGubn}
+		</if>
+		 ORDER BY FIELD (INCLUDE_VALUE, 'Y', 'N'), P.PARKING_NO
+	</select>
+
+	<insert id="insert_offCouponParking">
+		INSERT INTO T_OFFLINE_COUPON_PARKING(
+			   OFF_COUPON_CODE, PARKING_NO, REG_ID, REG_DT
+		) VALUES(
+			   #{hOffCouponCode}, #{grdParkingNo}, #{userId}, NOW()
+		)
+	</insert>
+
+	<delete id="delete_offCouponParking">
+		DELETE 
+		  FROM T_OFFLINE_COUPON_PARKING
+		 WHERE OFF_COUPON_CODE = #{hOffCouponCode}
+		   AND PARKING_NO = #{grdParkingNo}
+	</delete>
+</mapper>

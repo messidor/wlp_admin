@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.clientGroupMenu">
+
+	<select id="select_groupList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.ROLE_ID, A.ROLE_NAME, B.CODE_NAME1 ROLE_GUBN, '' STATE_COL
+          FROM T_SYS_ROLE_INFO A
+          LEFT OUTER JOIN T_SYS_COMCODE B
+            ON A.ROLE_GUBN_PARENT = B.PARENT_CODE_ID
+           AND A.ROLE_GUBN = B.CODE_ID
+         WHERE A.USE_YN = 'Y'
+           AND A.ROLE_ID NOT IN ('AD', 'MANAGE')
+		 
+		<if test="kRoleGubn neq null and kRoleGubn neq ''" >
+			AND A.ROLE_GUBN = #{kRoleGubn}
+		</if>
+		<if test="kSearchName neq null and kSearchName neq ''" >
+			<choose>
+				<when test ='kSearchGubn == "A"'>
+					AND A.ROLE_ID LIKE '%${kSearchName}%'
+				</when>
+				<when test ='kSearchGubn == "B"'>
+					AND A.ROLE_NAME LIKE '%${kSearchName}%'
+				</when>
+				<otherwise>
+					AND (A.ROLE_ID LIKE '%${kSearchName}%' OR A.ROLE_NAME LIKE '%${kSearchName}%')
+				</otherwise>
+			</choose>
+		</if>
+		
+		ORDER BY A.ROLE_ID
+	</select>
+	
+	<select id="select_groupMenuTree" parameterType="commonMap" resultType="commonMap">
+		SELECT Z.PARENT, Z.ID, Z.TEXT, Z.CODE_TYPE
+          FROM (
+                 SELECT '#' AS PARENT
+                      , 1 AS ID
+                      , '전체 메뉴' TEXT
+                      , 0 AS MENU_ORDER
+                      , 'F' CODE_TYPE
+                   FROM DUAL
+                  UNION ALL
+                 SELECT CAST(A.PARENT_MENU_ID AS CHAR) AS PARENT
+                      , A.MENU_ID AS ID
+                      , IF(A.MENU_NAME IS NULL,  ' ', CONCAT(A.MENU_NAME , ' [' , IFNULL(B.MENU_CNT, 0) , ']'))  AS TEXT
+                      , A.MENU_ORDER
+                      , A.CODE_TYPE
+                   FROM T_SYS_MENU_INFO A
+                   LEFT OUTER JOIN (
+                         SELECT PARENT_MENU_ID, COUNT(MENU_ID) AS MENU_CNT
+                           FROM T_SYS_MENU_INFO
+                          GROUP BY PARENT_MENU_ID
+                      ) B
+                     ON A.MENU_ID = B.PARENT_MENU_ID
+                  WHERE A.USE_YN = 'Y'
+                    AND A.CODE_TYPE = 'F'
+             ) Z
+    	 ORDER BY Z.MENU_ORDER
+	</select>
+	
+	<select id="select_groupMenuList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARENT_MENU_ID
+             , A.MENU_ID
+             , A.MENU_NAME
+             , A.MENU_URL
+             , C.CODE_NAME1 USE_YN
+          FROM T_SYS_MENU_INFO A
+          LEFT OUTER JOIN T_USER_INFO B
+            ON A.MOD_ID = B.USER_ID
+          LEFT OUTER JOIN T_SYS_COMCODE C
+            ON A.USE_YN_PARENT = C.PARENT_CODE_ID
+           AND A.USE_YN = C.CODE_ID
+         WHERE A.PARENT_MENU_ID = #{hMenuId}
+	</select>
+	
+	<select id="select_groupButtonList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.MENU_ID
+             , CASE WHEN D.MENU_ID IS NOT NULL THEN 'Y' ELSE 'N' END INCLUDE_VALUE
+             , A.BTN_ID, B.BTN_CAPTION BTN_NAME
+             , ' ' STATE_COL
+          FROM T_SYS_MENU_BTN A
+         INNER JOIN T_SYS_BTN_INFO B
+            ON A.BTN_ID = B.BTN_ID
+          LEFT OUTER JOIN T_USER_INFO C
+            ON A.MOD_ID = C.USER_ID
+          LEFT OUTER JOIN T_SYS_MENU_BTN_ROLE_INFO D
+            ON A.MENU_ID = D.MENU_ID
+           AND A.BTN_ID = D.BTN_ID
+           AND D.ROLE_ID = #{hRoleId}
+         WHERE A.MENU_ID = #{hMenuId2}
+	    
+	    <if test="hMenuId eq null or hMenuId eq ''" >
+			AND 1=0
+		</if>   
+	       
+         ORDER BY B.BTN_ORDER
+	</select>
+
+	<select id="select_groupCode" parameterType="commonMap" resultType="commonMap">
+		SELECT A.ROLE_ID VALUE, A.ROLE_NAME TEXT
+		  FROM T_SYS_ROLE_INFO A
+		 WHERE USE_YN = 'Y'
+		 ORDER BY ROLE_ID
+	</select>
+	
+	<insert id="insert_data">
+		INSERT INTO T_SYS_MENU_BTN_ROLE_INFO (
+			ROLE_ID, MENU_ID, BTN_ID, REG_ID
+          , REG_DT, MOD_ID, MOD_DT
+		) VALUES (
+        	#{hRoleId}, #{grdMenuId}, #{grdBtnId}, #{userId}
+          , NOW(), #{userId}, NOW()
+        ) ON DUPLICATE KEY UPDATE
+            MOD_ID = #{userId}
+          , MOD_DT = NOW()
+	</insert>
+	
+	<delete id="delete_data">
+		DELETE FROM T_SYS_MENU_BTN_ROLE_INFO
+         WHERE ROLE_ID = #{hRoleId}
+           AND MENU_ID = #{grdMenuId}
+           AND BTN_ID = #{grdBtnId}
+	</delete>
+</mapper>

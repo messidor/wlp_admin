@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.userStatus">
+	<select id="select_memberGubnStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(T.MEMBER_GUBN) MEMBER_CNT, T.MEMBER_GUBN_NAME
+		  FROM (
+				SELECT MEMBER_GUBN, CODE_NAME1 AS MEMBER_GUBN_NAME
+				     , DATE_FORMAT(MI.REG_DT, '%Y') REG_YEAR
+			         , DATE_FORMAT(MI.REG_DT, '%m') REG_MONTH
+				  FROM T_MEMBER_INFO MI
+				  LEFT OUTER JOIN T_SYS_COMCODE SC
+				    ON MI.MEMBER_GUBN_PARENT = SC.PARENT_CODE_ID
+				   AND MI.MEMBER_GUBN = SC.CODE_ID
+				 WHERE MEMBER_GUBN IS NOT NULL
+			 ) T
+		 GROUP BY T.MEMBER_GUBN, T.MEMBER_GUBN_NAME
+	</select>
+
+	<select id="select_reductionList" parameterType="commonMap" resultType="commonMap">
+		SELECT XX.REDUCTION_NAME, ROUND((COUNT(*) / TOTAL_COUNT) * 100, 2) AS CNT
+		  FROM (
+				SELECT MEMBER_ID, REDUCTION_CODE, REDUCTION_NAME, COUNT(*) OVER() AS TOTAL_COUNT
+				  FROM (
+						SELECT Z.MEMBER_ID, Z.REDUCTION_CODE, X.REDUCTION_NAME, RANK() OVER(PARTITION BY Z.MEMBER_ID ORDER BY Z.MEMBER_ID, X.REDUCTION_ORDER) AS RNK
+						  FROM (
+								SELECT MEMBER_ID, REDUCTION_CODE
+								  FROM T_MEMBER_REDUCTION 
+								<![CDATA[ 
+								 WHERE RED_EXP_DATE >= DATE_FORMAT(NOW(),'%Y%m%d')
+								]]>
+								 UNION 
+								SELECT MEMBER_ID, REDUCTION_CODE
+								  FROM T_CAR_REDUCTION
+								 WHERE USE_YN = 'Y'
+							 ) Z
+						 INNER JOIN T_REDUCTION_INFO X
+							ON Z.REDUCTION_CODE = X.REDUCTION_CODE
+					  ) ZZ
+				 WHERE ZZ.RNK = 1
+			  ) XX 
+		  GROUP BY XX.REDUCTION_NAME, XX.TOTAL_COUNT
+		  ORDER BY CNT DESC
+	</select>
+	
+	<select id="select_joinStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT '가입회원' AS MEMBER_GUBN,
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			   IFNULL(SUM(CASE WHEN T.WITHDRAW_DT = ${item.kDayArray} THEN T.JOIN_CNT ELSE 0 END), 0) AS `D${item.kDayArray}`
+		</foreach>
+		  FROM (
+		        SELECT SUBSTR(WITHDRAW_DATE, 1, 4) WITHDRAW_YEAR
+		             , SUBSTR(WITHDRAW_DATE, 5, 2) WITHDRAW_MONTH
+		             , SUBSTR(WITHDRAW_DATE, 7, 2) WITHDRAW_DT
+		             , JOIN_CNT
+		          FROM T_WITHDRAW_HISTORY
+		     ) T
+		 WHERE WITHDRAW_YEAR = #{kUseYear}
+		   AND WITHDRAW_MONTH = #{kUseMonth}
+		 UNION ALL
+		SELECT '탈퇴회원' AS MEMBER_GUBN,
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			   IFNULL(SUM(CASE WHEN T.WITHDRAW_DT = ${item.kDayArray} THEN T.WITHDRAW_CNT ELSE 0 END), 0) AS `D${item.kDayArray}`
+		</foreach>
+		  FROM (
+		        SELECT SUBSTR(WITHDRAW_DATE, 1, 4) WITHDRAW_YEAR
+		             , SUBSTR(WITHDRAW_DATE, 5, 2) WITHDRAW_MONTH
+		             , SUBSTR(WITHDRAW_DATE, 7, 2) WITHDRAW_DT
+		             , WITHDRAW_CNT
+		          FROM T_WITHDRAW_HISTORY
+		     ) T
+		 WHERE WITHDRAW_YEAR = #{kUseYear}
+		   AND WITHDRAW_MONTH = #{kUseMonth}
+	</select>
+	
+	<select id="select_joinStatusTotal" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(SUM(WITHDRAW_CNT), 0) AS WITHDRAW_CNT
+		     ,(SELECT COUNT(*) FROM T_MEMBER_INFO) AS JOIN_CNT
+		  FROM T_WITHDRAW_HISTORY
+	</select>
+	
+	<select id="select_useStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT 
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			   IFNULL(SUM(CASE WHEN T.LOGIN_DT IN (${item.kDayArray}) THEN 1 ELSE 0 END), 0) AS `D${item.kDayArray}`
+		</foreach>
+		  FROM (
+		  		SELECT LOGIN_YEAR, LOGIN_MONTH, LOGIN_DT, MEMBER_ID
+		  		  FROM (
+						SELECT DATE_FORMAT(LOGIN_DT, '%Y') LOGIN_YEAR
+						     , DATE_FORMAT(LOGIN_DT, '%m') LOGIN_MONTH
+						     , DATE_FORMAT(LOGIN_DT, '%d') LOGIN_DT
+						     , MEMBER_ID
+						  FROM (
+								SELECT MEMBER_ID, LOGIN_DT
+								  FROM T_MEMBER_LOG_INFO
+						     ) A
+				     ) B
+				 GROUP BY MEMBER_ID, LOGIN_YEAR, LOGIN_MONTH, LOGIN_DT
+		     ) T
+		 WHERE LOGIN_YEAR = #{kUseYear}
+		   AND LOGIN_MONTH = #{kUseMonth}
+	</select>
+	
+	<select id="select_userMobileYn" parameterType="commonMap" resultType="commonMap">
+		SELECT 
+				ROUND(IFNULL(COUNT(*) / (SELECT COUNT(*) FROM T_MEMBER_LOG_INFO) * 100,0),0) CNT
+			  , MOBILE_YN
+		  FROM (
+				SELECT CASE WHEN MOBILE_YN = 'Y' THEN '모바일' ELSE 'PC' END MOBILE_YN
+				     , DATE_FORMAT(LOGIN_DT, '%Y') LOGIN_YEAR
+					 , DATE_FORMAT(LOGIN_DT, '%m') LOGIN_MONTH
+				  FROM T_MEMBER_LOG_INFO
+		     ) A
+		 GROUP BY MOBILE_YN
+	</select>
+</mapper>

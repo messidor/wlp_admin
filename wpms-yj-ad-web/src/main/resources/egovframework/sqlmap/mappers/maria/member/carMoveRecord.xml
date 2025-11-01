@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.carMoveRecord">
+
+	<select id="select_list" parameterType="commonMap"	resultType="commonMap">
+		SELECT CIH.CAR_NO, CIH.CAR_ALIAS, IFNULL(MI.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+			 , AMC.CAR_ALIAS AS MOVE_CAR_ALIAS
+			 , IFNULL(MI2.MEMBER_NAME, '탈퇴한 사용자') AS MOVE_MEMBER_NAME
+		     , UI.USER_NAME AS CONFIRM_NAME
+     		 , DATE_FORMAT(AMC.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') AS CONFIRM_DT
+     		 , CIH.MEMBER_ID, AMC.APPLY_CODE, CIH.H_SEQ
+     		 , '상세보기' AS DETAIL
+		  FROM T_CAR_INFO_HISTORY CIH
+		  LEFT OUTER JOIN T_MEMBER_INFO MI
+		    ON CIH.MEMBER_ID = MI.MEMBER_ID
+		  LEFT OUTER JOIN T_APPLY_MEMBER_CAR AMC
+		    ON CIH.APPLY_CODE = AMC.APPLY_CODE
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON AMC.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN T_MEMBER_INFO MI2
+		    ON AMC.MEMBER_ID = MI2.MEMBER_ID
+		 WHERE CIH.DEL_GUBN = 'M'
+		   
+		<if test="kMemberName neq null and kMemberName neq ''" >
+		   AND (MI.MEMBER_NAME = #{kMemberName} OR MI2.MEMBER_NAME = #{kMemberName})
+		</if>
+
+		<if test="kCarNum neq null and kCarNum neq ''" >
+		   AND CIH.CAR_NO LIKE '%${kCarNum}%'
+		</if>
+		 ORDER BY CASE AMC.CONFIRM_GUBN WHEN 'N' THEN 1 WHEN 'Y' THEN 2 WHEN 'C' THEN 3 ELSE NULL END, AMC.REG_DT DESC
+	</select>
+
+	<select id="select_carInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT A.CAR_NO, A.CAR_ALIAS, B.MEMBER_NAME, F.FILE_EXT
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_PATH ,F.FILE_NAME , '.' , F.FILE_EXT) END AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) END AS NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) END AS DISP_FILE_NAME
+			 , IFNULL(R.FILE_REL_KEY, '') AS FILE_REL_KEY
+			 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+			 , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+			 , A.DEL_YN
+			 , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+		  FROM T_APPLY_MEMBER_CAR A
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+		  LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		  LEFT OUTER JOIN T_MEMBER_INFO B
+		    ON A.MEMBER_ID = B.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+		    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+		   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+		 WHERE A.CAR_NO = #{carNo}
+		   AND A.APPLY_CODE = #{hApplyCode}
+	</select>
+	
+	<select id="select_approvalCarInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT A.CAR_NO, A.CAR_ALIAS
+			 , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+			 , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+		  FROM T_CAR_INFO_HISTORY A
+		  LEFT OUTER JOIN T_MEMBER_INFO B
+		    ON A.MEMBER_ID = B.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+		    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+		   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+		 WHERE A.MEMBER_ID = #{hMemberId}
+		   AND A.CAR_NO = #{carNo}
+		   AND A.H_SEQ = #{hSeq}
+		   AND A.USE_YN = 'Y'
+	</select>
+
+</mapper>

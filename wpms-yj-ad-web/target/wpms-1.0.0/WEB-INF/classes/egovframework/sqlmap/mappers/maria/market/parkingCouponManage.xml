@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.parkingCouponManage">
+
+	<select id="select_freeHour" parameterType="commonMap" resultType="commonMap">
+		WITH RECURSIVE NUMBERS AS (
+		    SELECT 0 AS NUM
+		     UNION ALL
+		    SELECT NUM + 1 
+		      FROM NUMBERS 
+		    <![CDATA[
+		     WHERE NUM < 4
+		    ]]>
+		)
+		SELECT NUM * 30 AS TEXT, NUM * 30 AS VALUE
+		  FROM NUMBERS
+	</select>
+
+	<select id="select_parkingList" parameterType="commonMap" resultType="commonMap">
+		SELECT PI.PARKING_NO, PG.P_GOV_NAME, PI.PARKING_NAME, SCC.CODE_NAME1 GUGUN_NAME
+		  FROM T_PARKING_INFO PI
+		 INNER JOIN T_PARKING_GOV_INFO PG
+		    ON PI.P_GOV_CODE = PG.P_GOV_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE SCC
+		    ON PI.GUGUN_PARENT = SCC.PARENT_CODE_ID
+		   AND PI.GUGUN = SCC.CODE_ID
+		 WHERE PI.USE_YN = 'Y'
+		   AND PI.API_VER_GUBN = 2
+		 <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND PI.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kLocalGubn neq null and kLocalGubn neq ''" >
+			AND PI.GUGUN = #{kLocalGubn}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 ORDER BY PI.PARKING_NAME
+	</select>
+
+	<select id="select_parkingCouponList" parameterType="commonMap" resultType="commonMap">
+		SELECT PC.COUPON_CODE, PC.PARKING_NO, PC.COUPON_USE_GUBN, PC.COUPON_NAME, PC.DISCOUNT
+			 , PC.COUPON_PRICE, PC.USE_YN
+			 , UI.USER_NAME AS MOD_NAME, PC.MOD_DT, PC.DISCOUNT_GUBN
+		  FROM T_PARKING_COUPON_INFO PC
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON PC.MOD_ID = UI.USER_ID
+		 WHERE PC.PARKING_NO = #{hParkingNo}
+		 ORDER BY PC.COUPON_CODE ASC
+	</select>
+
+	<insert id="insert_parkingCouponInfo">
+		INSERT INTO T_PARKING_COUPON_INFO (
+			   COUPON_CODE, PARKING_NO, COUPON_USE_GUBN_PARENT, COUPON_USE_GUBN, COUPON_NAME
+			 , DISCOUNT, COUPON_PRICE, USE_YN_PARENT
+			 , USE_YN, REG_ID, REG_DT, MOD_ID, MOD_DT
+			 , DISCOUNT_GUBN_PARENT, DISCOUNT_GUBN
+		) VALUES (
+			   FN_MAKE_KEY('COUPON_CODE'), #{grdParkingNo}, 'COUPON_USE_GUBN', #{grdCouponUseGubn}, #{grdCouponName}
+			 , #{grdDiscount}, #{grdCouponPrice}, 'USE_YN'
+			 , #{grdUseYn}, #{userId}, NOW(), #{userId}, NOW()
+			 , 'DISCOUNT_GUBN', #{grdDiscountGubn}
+		)
+	</insert>
+
+	<update id="update_parkingCouponInfo">
+		UPDATE T_PARKING_COUPON_INFO
+		   SET COUPON_USE_GUBN = #{grdCouponUseGubn}
+			 , COUPON_NAME = #{grdCouponName}
+			 , DISCOUNT = #{grdDiscount}
+			 , COUPON_PRICE = #{grdCouponPrice}
+			 , USE_YN = #{grdUseYn}
+			 , MOD_ID = #{userId}
+			 , MOD_DT = NOW()
+		WHERE COUPON_CODE = #{grdCouponCode}
+		  AND PARKING_NO = #{grdParkingNo}
+	</update>
+	
+	<delete id="delete_parkingCouponInfo">
+		DELETE
+		  FROM T_PARKING_COUPON_INFO
+		 WHERE COUPON_CODE = #{grdCouponCode}
+		   AND PARKING_NO = #{grdParkingNo}
+	</delete>
+	
+</mapper>

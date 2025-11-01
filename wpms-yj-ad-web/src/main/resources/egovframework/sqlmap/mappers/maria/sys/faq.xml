@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.faq">
+
+	<select id="select_faq_list" parameterType="commonMap" resultType="commonMap">
+		SELECT FAQ_CODE VALUE, FAQ_CONTENT TEXT
+	  	  FROM T_FAQ
+	  	 WHERE FAQ_GUBN = 'M'
+	  	 ORDER BY FAQ_ORDER
+	</select>
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT V.FAQ_CODE, V.Q_CODE, V.FAQ_ORDER AS FAQ_ORDER, MAX(V.FAQ_CONTENT) FAQ_CONTENT, MAX(V.Q_FAQ_CONTENT) Q_FAQ_CONTENT
+		     , MAX(V.R_FAQ_CONTENT) R_FAQ_CONTENT, '상세보기' AS BTN_DETAIL
+		  FROM (
+				  SELECT A.FAQ_CODE, B.FAQ_CODE Q_CODE, A.FAQ_CONTENT, CASE WHEN B.FAQ_GUBN = 'F' THEN B.FAQ_CONTENT ELSE NULL END Q_FAQ_CONTENT
+				       , CASE WHEN B.FAQ_GUBN = 'R' THEN B.FAQ_CONTENT ELSE NULL END R_FAQ_CONTENT
+				       , B.FAQ_ORDER
+				    FROM T_FAQ A
+				   INNER JOIN T_FAQ B
+				      ON A.FAQ_CODE = B.PARENT_FAQ_CODE
+				   WHERE A.FAQ_GUBN = 'M'
+				) V
+		  WHERE 1=1
+
+
+		<if test="kFaqCode neq null and kFaqCode neq ''" >
+			AND V.FAQ_CODE = #{kFaqCode}
+		</if>
+
+	     GROUP BY V.FAQ_CODE, V.Q_CODE, V.FAQ_ORDER
+		 ORDER BY V.FAQ_CODE, V.FAQ_ORDER
+	</select>
+
+	<select id="select_faq_detail" parameterType="commonMap" resultType="commonMap">
+		SELECT V.PARENT_FAQ_CODE, V.FAQ_CODE, MAX(V.FAQ_CONTENT) FAQ_CONTENT, MAX(V.R_FAQ_CONTENT) R_FAQ_CONTENT
+		  FROM (
+					SELECT A.PARENT_FAQ_CODE, A.FAQ_CODE, CASE WHEN FAQ_GUBN = 'F' THEN A.FAQ_CONTENT ELSE NULL END FAQ_CONTENT, CASE WHEN FAQ_GUBN = 'R' THEN A.FAQ_CONTENT ELSE NULL END R_FAQ_CONTENT
+					  FROM T_FAQ A
+					 WHERE A.PARENT_FAQ_CODE = #{faqCode}
+					   AND A.FAQ_CODE =  #{qCode}
+			    ) V
+		  GROUP BY V.PARENT_FAQ_CODE, V.FAQ_CODE
+	</select>
+
+	<select id="select_order" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(IFNULL(FAQ_ORDER,0))+1 FAQ_ORDER
+	  	  FROM T_FAQ
+	  	 WHERE FAQ_GUBN = 'M'
+	</select>
+
+	<insert id="insert_faqM">
+		INSERT INTO T_FAQ (
+			   PARENT_FAQ_CODE, FAQ_CODE, FAQ_CONTENT, FAQ_ORDER
+			 , FAQ_GUBN
+		     ) VALUES (
+		       '*', fn_make_key('FAQ_CODE'), #{faqContent}, #{faqOrder}
+		     , 'M'
+		     )
+	</insert>
+
+	<update id="update_faqM">
+		UPDATE T_FAQ
+		   SET FAQ_CONTENT = #{faqContent}
+		 WHERE PARENT_FAQ_CODE = '*'
+		   AND FAQ_CODE = #{menuName}
+	</update>
+
+	<delete id="delete_faqM">
+		DELETE FROM T_FAQ
+		 WHERE PARENT_FAQ_CODE = '*'
+		   AND FAQ_CODE = #{menuName}
+	</delete>
+
+	<delete id="delete_connect_faqM">
+		DELETE FROM T_FAQ
+		 WHERE FAQ_CODE IN (
+			WITH RECURSIVE CTE AS (
+				SELECT FAQ_CODE
+				  FROM T_FAQ
+				 WHERE FAQ_CODE = #{menuName}
+				 UNION ALL
+				SELECT T.FAQ_CODE
+				  FROM T_FAQ T
+				 INNER JOIN CTE C ON T.PARENT_FAQ_CODE = C.FAQ_CODE
+			)
+			SELECT FAQ_CODE FROM CTE
+		)
+	</delete>
+
+	<select id="select_faq_new_key" parameterType="commonMap" resultType="commonMap">
+		SELECT FN_MAKE_KEY('FAQ_CODE') FAQ_NEW_KEY
+		  FROM DUAL
+	</select>
+
+	<select id="select_faq_order" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(MAX(FAQ_ORDER), 0) + 1 FAQ_ORDER
+	  	  FROM T_FAQ
+	  	 WHERE PARENT_FAQ_CODE = #{faqCode}
+	  	   AND FAQ_GUBN = 'F'
+	</select>
+
+	<insert id="insert_faqQ">
+		INSERT INTO T_FAQ (
+			   PARENT_FAQ_CODE, FAQ_CODE, FAQ_CONTENT, FAQ_ORDER
+			 , FAQ_GUBN
+		     ) VALUES (
+		       #{menuName}, #{faqNewKey}, #{faqContent}, #{faqOrder}
+		     , 'F'
+		     )
+	</insert>
+
+	<insert id="insert_faqR">
+		INSERT INTO T_FAQ (
+			   PARENT_FAQ_CODE, FAQ_CODE, FAQ_CONTENT, FAQ_ORDER
+			 , FAQ_GUBN
+		     ) VALUES (
+		       #{menuName}, #{faqNewKey}, #{rFaqContent}, #{faqOrder}
+		     , 'R'
+		     )
+	</insert>
+
+	<select id="select_u_faq_order" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(MAX(FAQ_ORDER), 0) + 1 FAQ_ORDER
+	  	  FROM T_FAQ
+	  	 WHERE PARENT_FAQ_CODE = #{menuName}
+	  	   AND FAQ_GUBN = 'F'
+	</select>
+
+	<update id="update_faqQ">
+		UPDATE T_FAQ
+		   SET FAQ_CONTENT = #{faqContent}
+		     , PARENT_FAQ_CODE = #{menuName}
+		     , FAQ_ORDER = #{faqOrder}
+		  WHERE PARENT_FAQ_CODE = #{faqCode}
+		    AND FAQ_CODE = #{qCode}
+		    AND FAQ_GUBN = 'F'
+	</update>
+
+	<update id="update_faqR">
+		UPDATE T_FAQ
+		   SET FAQ_CONTENT = #{rFaqContent}
+		     , PARENT_FAQ_CODE = #{menuName}
+		     , FAQ_ORDER = #{faqOrder}
+		 WHERE PARENT_FAQ_CODE = #{faqCode}
+		   AND FAQ_CODE = #{qCode}
+		   AND FAQ_GUBN = 'R'
+	</update>
+
+	<delete id="delete_faqQ">
+		DELETE FROM T_FAQ
+		 WHERE PARENT_FAQ_CODE = #{faqCode}
+		   AND FAQ_CODE = #{qCode}
+		   AND FAQ_GUBN = 'F'
+	</delete>
+
+	<delete id="delete_faqR">
+		DELETE FROM T_FAQ
+		 WHERE PARENT_FAQ_CODE = #{faqCode}
+		   AND FAQ_CODE = #{qCode}
+		   AND FAQ_GUBN = 'R'
+	</delete>
+
+	<update id="update_faqOrder">
+		UPDATE T_FAQ
+		   SET FAQ_ORDER = #{grdFaqOrder}
+		 WHERE PARENT_FAQ_CODE = #{grdFaqCode}
+		   AND FAQ_CODE = #{grdQCode}
+	</update>
+
+</mapper>

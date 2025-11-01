@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.optionManage">
+
+	<select id="select_info" parameterType="commonMap" resultType="commonMap">
+		SELECT ELEC_AUTO_YN, LOW_PLT_CF_GUBN, CALL_API_YN
+		  FROM T_SYS_OPTION
+	</select>
+	
+	<select id="select_lowPltGubn" parameterType="commonMap" resultType="commonMap">
+		SELECT CODE_ID AS VALUE, CODE_NAME2 AS TEXT
+		  FROM T_SYS_COMCODE
+		 WHERE PARENT_CODE_ID = 'LOW_PLT_GUBN'
+		   AND CODE_NAME3 = 'Y'
+	</select>
+	
+	<update id="update_option">
+		UPDATE T_SYS_OPTION
+		   SET ELEC_AUTO_YN = #{elecAutoYn}
+		   	 , LOW_PLT_CF_GUBN = #{lowPltCfGubn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+	</update>
+	
+	<update id="update_option2">
+		UPDATE T_SYS_OPTION
+		   SET CALL_API_YN = #{callApiYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+	</update>
+	
+    <select id="select_ApiSmsRecvStatus" parameterType="commonMap" resultType="commonMap">
+        SELECT A.PARKING_NO, A.PARKING_NAME, B.CHK_API, B.ALERT_RECV_YN
+             , IFNULL(B.ALERT_CAUT_HOUR, 0) ALERT_CAUT_HOUR
+             , B.ALERT_MUTE_YN
+             , DATE_FORMAT(B.ALERT_MUTE_START_DT, '%Y-%m-%d') AS ALERT_MUTE_START_DT
+             , DATE_FORMAT(B.ALERT_MUTE_END_DT, '%Y-%m-%d') AS ALERT_MUTE_END_DT
+             , U.USER_NAME AS MOD_ID_NAME
+             , DATE_FORMAT(B.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+             , '' AS STATE_COL
+          FROM T_PARKING_INFO A
+          LEFT OUTER JOIN T_WARNING_SMS_STATUS B
+            ON A.PARKING_NO = B.PARKING_NO
+          LEFT OUTER JOIN T_USER_INFO U
+            ON B.MOD_ID = U.USER_ID
+         WHERE A.USE_YN = 'Y'
+         ORDER BY A.PARKING_NO
+    </select>
+
+    <select id="select_ApiSmsMessageInfo" parameterType="commonMap" resultType="commonMap">
+        SELECT BOTTOM_CONTENTS, MIDDLE_CONTENTS, TOP_CONTENTS
+          FROM T_WARNING_SMS_MSG
+    </select>
+    
+    <update id="update_ApiSmsRecvStatus">
+        INSERT INTO T_WARNING_SMS_STATUS (
+            PARKING_NO,
+            ALERT_YN_PARENT,
+            ALERT_YN,
+            CHK_API_PARENT,
+            CHK_API,
+            ALERT_RECV_YN_PARENT,
+            ALERT_RECV_YN,
+            ALERT_SEND_GUBN_PARENT,
+            ALERT_SEND_GUBN,
+            ALERT_WARN_HOUR,
+            ALERT_CAUT_HOUR,
+            <if test="grdAlertMuteStartDt neq null and grdAlertMuteStartDt neq ''">
+                ALERT_MUTE_START_DT,
+            </if>
+            <if test="grdAlertMuteEndDt neq null and grdAlertMuteEndDt neq ''">
+                ALERT_MUTE_END_DT,
+            </if>
+            REG_ID,
+            REG_DT,
+            MOD_ID,
+            MOD_DT,
+            ALERT_MUTE_YN_PARENT,
+            ALERT_MUTE_YN
+        )
+        VALUES (
+            #{grdParkingNo},
+            'ALERT_YN',
+            'Y',
+            'CHK_API_TYPE',
+            #{grdChkApi},
+            'ALERT_RECV_YN',
+            #{grdAlertRecvYn},
+            'ALERT_SEND_GUBN',
+            'ASG02',
+            0,
+            IF(#{grdAlertCautHour} = '', 0, #{grdAlertCautHour}),
+            <if test="grdAlertMuteStartDt neq null and grdAlertMuteStartDt neq ''">
+                CONCAT(REPLACE(#{grdAlertMuteStartDt}, '-', '') , '000000'),
+            </if>
+            <if test="grdAlertMuteEndDt neq null and grdAlertMuteEndDt neq ''">
+                CONCAT(REPLACE(#{grdAlertMuteEndDt}, '-', '') , '000000'),
+            </if>
+            #{userIdEnc},
+            NOW(),
+            #{userIdEnc},
+            NOW(),
+            'USE_YN',
+            #{grdAlertMuteYn}
+        )
+        ON DUPLICATE KEY UPDATE
+            CHK_API = #{grdChkApi},
+            ALERT_RECV_YN = #{grdAlertRecvYn},
+            ALERT_CAUT_HOUR = IF(#{grdAlertCautHour} = '', 0, #{grdAlertCautHour}),
+            ALERT_MUTE_YN_PARENT = 'USE_YN',
+            ALERT_MUTE_YN = #{grdAlertMuteYn},
+            <if test="grdAlertMuteStartDt neq null and grdAlertMuteStartDt neq ''">
+                ALERT_MUTE_START_DT = CONCAT(REPLACE(#{grdAlertMuteStartDt}, '-', '') , '000000'),
+            </if>
+            <if test="grdAlertMuteEndDt neq null and grdAlertMuteEndDt neq ''">
+                ALERT_MUTE_END_DT = CONCAT(REPLACE(#{grdAlertMuteEndDt}, '-', '') , '000000'),
+            </if>
+            MOD_ID = #{userIdEnc},
+            MOD_DT = NOW()
+    </update>
+    
+    <update id="update_ApiSmsMessage">
+        UPDATE T_WARNING_SMS_MSG
+           SET TOP_CONTENTS = #{topContents}
+             , MIDDLE_CONTENTS = #{middleContents}
+             , BOTTOM_CONTENTS = #{bottomContents}
+             , MOD_ID = #{userIdEnc}
+             , MOD_DT = NOW()
+    </update>
+    
+    <!-- API 알림 수신받을 사람 목록 -->
+    <select id="select_ApiSmsReceiveUserList" parameterType="commonMap" resultType="commonMap">
+        SELECT A.RECV_PHONE, A.RECV_NAME, A.USE_YN
+             , A.RECV_PHONE AS H_RECV_PHONE
+             , DATE_FORMAT(A.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+             , IFNULL(U.USER_NAME, '') AS MOD_ID_NAME
+             , 'Y' AS CHECK_VALUE
+             , '' AS STATE_COL
+          FROM T_WARNING_SMS_RECV_PHONE A
+          LEFT OUTER JOIN T_USER_INFO U
+            ON A.MOD_ID = U.USER_ID
+    </select>
+    
+    <!-- API 알림 수신받을 사람 추가 -->
+    <insert id="insert_ApiSmsReceiveUserInfo">
+        INSERT INTO T_WARNING_SMS_RECV_PHONE(
+                RECV_PHONE, RECV_NAME, USE_YN_PARENT, USE_YN, REG_ID
+              , REG_DT, MOD_ID, MOD_DT
+        ) VALUES (
+                #{grdRecvPhone}, #{grdRecvName}, 'USE_YN', #{grdUseYn}, #{userId}
+              , NOW(), #{userId}, NOW()
+        )
+    </insert>
+    
+    <!-- API 알림 수신받을 사람 수정 -->
+    <update id="update_ApiSmsReceiveUserInfo">
+        UPDATE T_WARNING_SMS_RECV_PHONE
+           SET RECV_PHONE = #{grdRecvPhone}
+             , RECV_NAME = #{grdRecvName}
+             , USE_YN = #{grdUseYn}
+             , MOD_ID = #{userId}
+             , MOD_DT = NOW()
+         WHERE RECV_PHONE = #{grdHRecvPhone}
+    </update>
+    
+    <!-- API 알림 수신받을 사람 삭제 -->
+    <delete id="delete_ApiSmsReceiveUserInfo">
+        DELETE FROM T_WARNING_SMS_RECV_PHONE
+         WHERE RECV_PHONE = #{grdHRecvPhone}
+    </delete>
+</mapper>

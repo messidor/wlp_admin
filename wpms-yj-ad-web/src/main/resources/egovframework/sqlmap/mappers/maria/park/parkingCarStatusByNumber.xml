@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingCarStatusByNumber">
+	
+	<select id="select_parkStatusAllList" parameterType="commonMap" resultType="commonMap">
+		SELECT G.P_GOV_NAME, PI.PARKING_NAME, PCH.CAR_NO
+			 , IFNULL(MI.MEMBER_NAME, '') AS MEMBER_NAME
+			 , DATE_FORMAT(PCH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+			 , DATE_FORMAT(PCH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+			 , CONCAT(FORMAT(IFNULL(PC.PARKING_PRICE,0), 0) , '원') AS PARKING_PRICE
+		     , CC.CODE_NAME1 AS PAY_GUBN_NAME
+		     , PC.CHARGE_NO
+		     , ROW_NUMBER() OVER(ORDER BY PCH.P_ENT_DT DESC) AS NUM
+		  FROM T_PARKING_GOV_INFO G
+		 INNER JOIN T_PARKING_INFO PI
+		  	ON G.P_GOV_CODE = PI.P_GOV_CODE
+		 INNER JOIN T_PARKING_CAR_HISTORY PCH
+		    ON PI.PARKING_NO = PCH.PARKING_NO
+		 INNER JOIN T_PARKING_CHARGE PC
+		 	ON PCH.CAR_NO = PC.CAR_NO
+		   AND PCH.MEMBER_ID = PC.MEMBER_ID
+		   AND PCH.PARKING_NO = PC.PARKING_NO
+		   AND PCH.HISTORY_CODE = PC.HISTORY_CODE
+		  LEFT OUTER JOIN T_MEMBER_INFO MI
+		    ON MI.MEMBER_ID = PCH.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC
+		  	ON PC.PAY_GUBN_PARENT = CC.PARENT_CODE_ID
+		   AND PC.PAY_GUBN = CC.CODE_ID
+		 WHERE PI.USE_YN = 'Y'
+		   AND PCH.CAR_NO = #{kCarNo}
+
+		<![CDATA[AND PCH.P_ENT_DT <= ( STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY )]]>
+	    <![CDATA[AND PCH.P_ENT_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 ORDER BY PCH.P_ENT_DT DESC
+	</select>
+</mapper>

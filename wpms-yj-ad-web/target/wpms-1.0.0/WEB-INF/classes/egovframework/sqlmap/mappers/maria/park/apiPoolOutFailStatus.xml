@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.apiPoolOutFailStatus">
+	
+	<select id="select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT SERVICE_KEY , PARKING_AREA_CODE , CAR_NUMBER_RECV 
+		 	, DATE_FORMAT(OUT_DT,'%Y-%m-%d %H:%i:%s') OUT_DT
+		 	, DATE_FORMAT(RECEIVE_DT,'%Y-%m-%d %H:%i:%s') RECEIVE_DT
+		 	, REMARK 
+		FROM T_POOL_OUT_FAIL
+	     WHERE 1=1
+		
+		<if test="carNumber neq null and carNumber neq ''" > 
+			AND CAR_NUMBER_RECV LIKE '%${carNumber}%'
+		</if>
+		<if test="remark neq null and remark neq ''" > 
+			AND REMARK LIKE '%${remark}%'
+		</if>
+			
+			<![CDATA[AND RECEIVE_DT <= ( STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY )]]>
+		    <![CDATA[AND RECEIVE_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+		 ORDER BY RECEIVE_DT DESC
+	</select>
+	
+</mapper>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingCompManage">
+
+	<select id="select_compList" parameterType="commonMap" resultType="commonMap">
+		SELECT PCI.P_COMP_CODE, PCI.P_COMP_NAME, PCI.P_COMP_TEL
+			 , CONCAT('[' , PCI.P_COMP_POST , '] ' , PCI.P_COMP_ADDR , ' ' , PCI.P_COMP_ADDR2) AS ADDRESS
+			 , PCI.P_MANAGER, PCI.P_MANAGER_PHONE, PCI.P_MANAGER_EMAIL
+			 , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'USE_YN' AND CODE_ID = PCI.USE_YN) AS USE_YN_NAME
+			 , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PCI.MOD_ID) as MOD_ID
+			 , DATE_FORMAT(PCI.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		  FROM T_PARKING_COMP_INFO PCI
+		 WHERE 1=1
+
+		<if test="kSearchName neq null and kSearchName neq ''" >
+			AND PCI.P_COMP_NAME LIKE '%${kSearchName}%'
+		</if>
+		<if test="kSearchManager neq null and kSearchManager neq ''" >
+			AND PCI.P_MANAGER = #{kSearchManager}
+		</if>
+		<if test="kUseYn neq null and kUseYn neq ''" >
+			AND PCI.USE_YN = #{kUseYn}
+		</if>
+		 ORDER BY P_COMP_NAME ASC
+	</select>
+
+</mapper>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.chunk.chunkData">
+    
+    <!-- Chunk 데이터를 모두 선택 (합친 후 보내기 위해 선택) -->
+    <select id="select_allChunkedData" parameterType="commonMap" resultType="commonMap">
+        SELECT CONTENTS
+          FROM T_DATA_CHUNKED
+         WHERE DATA_UUID = #{dataUuid}
+         ORDER BY DATA_IDX ASC
+    </select>
+    
+    <!-- 받은 1개의 요청(Chunked request)을 저장 -->
+    <insert id="insert_singleChunkedData">
+        INSERT INTO T_DATA_CHUNKED (
+            DATA_UUID
+          , DATA_IDX
+          , REQUEST_DATA_TYPE_PARENT
+          , REQUEST_DATA_TYPE
+          , ORIGIN_URL
+          , CONTENTS
+          , REG_ID
+          , REG_DT
+        ) VALUES (
+            #{dataUuid}
+          , #{dataIdx}
+          , 'REQUEST_DATA_TYPE'
+          , #{requestDataType}
+          , #{originUrl}
+          , #{contents}
+          , #{userIdEnc}
+          , NOW()
+        )
+    </insert>
+    
+    <!-- 사용이 완료된 chunk 데이터를 삭제 -->
+    <delete id="delete_allChunkedData">
+        DELETE FROM T_DATA_CHUNKED
+         WHERE DATA_UUID = #{dataUuid}
+    </delete>
+    
+</mapper>

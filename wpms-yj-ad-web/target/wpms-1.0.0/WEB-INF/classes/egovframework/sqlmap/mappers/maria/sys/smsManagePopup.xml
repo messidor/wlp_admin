@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.smsManagePopup">
+	
+	<select id="select_smsDetail" parameterType="commonMap" resultType="commonMap">
+		SELECT Z.*, C.CODE_NAME1 AS SEND_RESULT_NAME
+		  FROM (
+			  	SELECT A.SMS_CODE
+			         , A.RESULT_DT
+			         , A.MSG_TYPE
+			         , A.MEMBER_ID
+			         , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			         , CASE WHEN A.SEND_RESULT IS NULL THEN 'WAIT' ELSE A.SEND_RESULT END AS SEND_RESULT
+			         , A.RECV_NAME
+			         , A.RECV_PHONE
+			         , A.SEND_PHONE
+			         , B.CODE_NAME1 AS MSG_TYPE_NAME
+			         , A.MSG_CONTENTS
+			  	  FROM T_SMS_LOG A
+			  	  LEFT OUTER JOIN T_SYS_COMCODE B
+			  	    ON A.MSG_TYPE_PARENT = B.PARENT_CODE_ID
+		      	   AND A.MSG_TYPE = B.CODE_ID
+		     ) Z
+		  LEFT OUTER JOIN T_SYS_COMCODE C
+		    ON C.PARENT_CODE_ID = 'SEND_RESULT'
+		   AND Z.SEND_RESULT = C.CODE_ID
+		 WHERE 1=1
+		   AND Z.SMS_CODE = #{smsCode}
+	</select>
+	
+</mapper>

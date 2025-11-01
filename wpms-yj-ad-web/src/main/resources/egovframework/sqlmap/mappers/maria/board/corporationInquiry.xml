@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.board.corporationInquiry">
+
+	<select id="Select_List" parameterType="commonMap"	resultType="commonMap">
+		SELECT ROW_NUMBER() OVER(ORDER BY A.REG_DT) AS NUM
+	  		 , A.BOARD_ID
+		 	 , A.BOARD_TITLE
+		 	 , P.CAR_NO
+		 	 , PI.PARKING_NAME
+		 	 , CONCAT(FORMAT(IFNULL(P.PARKING_PRICE, 0), 0) , '원') AS PARKING_PRICE
+		 	 , A.COMMENT_YN
+		 	 , C.CODE_NAME1 AS COMMENT_YN_NAME
+		 	 , IFNULL(MI.MEMBER_NAME, '탈퇴한 사용자') AS REG_NAME
+		 	 , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		 	 , P.CHARGE_NO
+		 	 , P.MEMBER_ID
+		 	 , P.PARKING_NO
+		 	 , C2.CODE_NAME1 AS Q_GUBN
+		 	 , CONCAT(DATE_FORMAT(H.P_ENT_DT, '%Y-%m-%d %H:%i:%s') , ' ~ ' , DATE_FORMAT(H.P_OUT_DT, '%Y-%m-%d %H:%i:%s')) AS INOUT_DT
+	  	  FROM T_SYS_BOARD_INFO A
+	  	 INNER JOIN T_PARKING_CHARGE P
+	  	    ON A.CHARGE_NO = P.CHARGE_NO
+	  	 INNER JOIN T_PARKING_INFO PI
+	  	    ON P.PARKING_NO = PI.PARKING_NO
+	  	  LEFT OUTER JOIN T_PARKING_CAR_HISTORY H
+	  	    ON P.HISTORY_CODE = H.HISTORY_CODE
+	 	  LEFT OUTER JOIN T_MEMBER_INFO MI
+	  	    ON A.REG_ID = MI.MEMBER_ID
+	  	  LEFT OUTER JOIN T_SYS_COMCODE C
+	  	    ON A.COMMENT_YN_PARENT = C.PARENT_CODE_ID
+	  	   AND A.COMMENT_YN = C.CODE_ID
+	  	  LEFT OUTER JOIN T_SYS_COMCODE C2
+	  	    ON A.Q_GUBN_PARENT = C2.PARENT_CODE_ID
+	  	   AND A.Q_GUBN = C2.CODE_ID
+	  	 WHERE A.BOARD_GUBN = 'B'
+	  	   AND A.RECV_GUBN = 'BR002'
+<![CDATA[
+		   AND A.REG_DT <= (STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY)
+		   AND A.REG_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')  
+]]>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		
+ 		<if test="kTitle neq null and kTitle neq ''" >
+			AND A.BOARD_TITLE LIKE '%${kTitle}%'
+		</if>
+
+		<if test="kRegId neq null and kRegId neq ''" >
+			AND MI.MEMBER_NAME = #{kRegId}
+		</if>
+
+		<if test="kGubn neq null and kGubn neq ''" >
+			AND A.COMMENT_YN = #{kGubn}
+		</if>
+
+	  	  ORDER BY A.REG_DT DESC
+	</select>
+
+	<select id="Select_PopupList" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.BOARD_ID
+			 , IFNULL(MI.MEMBER_ID, '탈퇴한 사용자') AS MEMBER_ID
+			 , IFNULL(MI.MEMBER_NAME, '탈퇴한 사용자') AS REG_NAME
+			 , IFNULL(MI.MEMBER_PHONE, '') AS MEMBER_PHONE
+			 , GI.P_GOV_CODE
+			 , GI.P_GOV_TEL
+			 , GI.P_GOV_NAME
+			 , A.BOARD_TITLE
+			 , DATE_FORMAT(PP.REG_DT, '%Y-%m-%d %H:%i:%s') AS PAY_DT
+			 , P.CAR_NO
+			 , PI.PARKING_NAME
+			 , CONCAT(FORMAT(IFNULL(P.PARKING_PRICE, 0), 0) , '원') AS PARKING_PRICE
+			 , A.BOARD_CONTENT
+			 , A.BOARD_COMMENT
+			 , IFNULL(CONCAT(F.ORIG_FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '') AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN IFNULL(CONCAT(F.FILE_PATH , F.FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '') 
+					ELSE IFNULL(CONCAT(F.FILE_PATH , F.FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '') END AS FILE_PATH
+			 , IFNULL(A.FILE_REL_KEY, '') AS FILE_REL_KEY
+			 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+			 , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+			 , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+			 , DATE_FORMAT(H.P_ENT_DT, '%Y-%m-%d %H:%i:%s') AS P_ENT_DT
+			 , DATE_FORMAT(H.P_OUT_DT, '%Y-%m-%d %H:%i:%s') AS P_OUT_DT		 	 
+		  FROM T_SYS_BOARD_INFO A
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+	      LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+	  	 INNER JOIN T_PARKING_CHARGE P
+	  	    ON A.CHARGE_NO = P.CHARGE_NO
+	  	 INNER JOIN T_PARKING_INFO PI
+	  	    ON P.PARKING_NO = PI.PARKING_NO
+	  	 INNER JOIN T_PARKING_GOV_INFO GI
+	  	    ON PI.P_GOV_CODE = GI.P_GOV_CODE
+	  	  LEFT OUTER JOIN T_PARKING_CAR_HISTORY H
+			ON P.HISTORY_CODE = H.HISTORY_CODE
+	  	  LEFT OUTER JOIN T_PARKING_PAY PP
+	  	    ON P.PAY_CODE = PP.PAY_CODE
+	 	  LEFT OUTER JOIN T_MEMBER_INFO MI
+	  	    ON A.REG_ID = MI.MEMBER_ID
+	  	  LEFT OUTER JOIN T_MEMBER_INFO MI2
+	  	    ON A.MEMBER_ID = MI2.MEMBER_ID
+	  	  LEFT OUTER JOIN T_SYS_COMCODE C
+	  	    ON A.COMMENT_YN_PARENT = C.PARENT_CODE_ID
+	  	   AND A.COMMENT_YN = C.CODE_ID
+		 WHERE A.BOARD_ID = #{hBoardId}
+		   AND A.BOARD_GUBN = 'B'
+	</select>
+
+	<update id="Update_PopupData">
+		UPDATE T_SYS_BOARD_INFO
+		   SET COMMENT_YN = 'Y'
+		     , COMMENT_REG_ID = #{userId}
+		     , COMMENT_REG_DT = NOW()
+		     , BOARD_COMMENT = #{boardComment}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE BOARD_ID = #{hBoardId}
+	</update>
+	
+	<select id="Select_boardMember" parameterType="commonMap"	resultType="commonMap">
+		SELECT IFNULL(MI.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME, MI.MEMBER_PHONE, MI.KAKAO_YN
+		  FROM T_SYS_BOARD_INFO BI
+		  LEFT OUTER JOIN T_MEMBER_INFO MI
+		    ON BI.MEMBER_ID = MI.MEMBER_ID
+		 WHERE BOARD_ID = #{hBoardId}
+	</select>
+
+</mapper>

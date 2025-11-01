@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.at.receiveAlimTalkResult">
+
+    <!-- 보낼 때 데이터 추가(MsgUtil.java) -->
+    <insert id="insert_AlimTalkSendData">
+        INSERT INTO BIZ_AT_RESULT (
+            CMSGID,     REG_DT,     MSG_GUBN_PARENT,    MSG_GUBN,   TO_NAME,
+            RE_SMS,     REF_KEY,    VAR_LIST,           TITLE,      SEND_PHONE,
+            MSG_CONTENTS
+        ) VALUES (
+            #{cMsgId},  DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),   'MSG_GUBN', #{msgCode}, #{toName},
+            #{reSms},   #{smsCode},                              #{varList}, #{title},   #{sendPhone},
+            #{msgContents}
+        )
+    </insert>
+
+    <!-- 결과 수신시 데이터 수정(AtController.java) -->
+    <update id="update_AlimTalkResult">
+        UPDATE BIZ_AT_RESULT
+           SET DEVICE = #{device},
+               MSGID = #{msgId},
+               PHONE = #{phone},
+               MEDIA = #{media},
+               UNIXTIME = #{unixTime},
+               RESULT = #{result},
+               USERDATA = #{userData},
+               WAPINFO = #{wapInfo},
+               TELRES = #{telRes},
+               TELTIME = #{telTime},
+               KAORES = #{kaoRes},
+               KAOTIME = #{kaoTime},
+               RCSRES = #{rcsRes},
+               RCSTIME = #{rcsTime},
+               RETRY_FLAG = #{retryFlag},
+               RESEND_FLAG = #{resendFlag},
+               RECV_DT = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+               RE_SMS = #{reSms}
+         WHERE CMSGID = #{cMsgId}
+    </update>
+    
+    <!-- year(4) + month(2) + day(2) + inc_value(24) RefKey 생성 (MsgUtil.java) -->
+    <select id="select_GetRefKey" parameterType="commonMap" resultType="commonMap">
+        SELECT CONCAT(DATE_FORMAT(NOW(), '%Y%m%d'), LPAD(fn_make_seq('BIZ_AT_RES_SEQ'), 24, '0')) AS REFKEY FROM DUAL;
+    </select>
+    
+    <select id="select_MessageInfo" parameterType="commonMap" resultType="commonMap">
+        SELECT BIZ_TPL_CODE AS TEMPLATE_CODE
+             , REPLACE(REPLACE(KAO_TPL, CHR(10), '\n'), CHR(13), '\r') AS KAKAO_MSG
+             , SMS_TPL AS SMS_MSG
+          FROM T_MSG_TEMPLATE
+         WHERE TPL_CODE = #{msgCode}
+    </select>
+    
+    <select id="select_MessageTitle" parameterType="commonMap" resultType="commonMap">
+        SELECT TPL_NAME
+          FROM T_MSG_TEMPLATE
+         WHERE TPL_CODE = #{tplCode}
+    </select>
+</mapper>

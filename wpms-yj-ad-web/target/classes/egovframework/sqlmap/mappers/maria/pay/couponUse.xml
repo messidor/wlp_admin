@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.couponUse">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT X.COUPON_CODE, GI.P_GOV_CODE, X.USE_DT, GI.P_GOV_NAME, P.PARKING_NAME, X.CAR_NO, MI.MEMBER_NAME
+			 , X.COUPON_NAME, X.USE_QTY, X.DISCOUNT, SC.CODE_NAME1 USE_YN
+		  FROM (
+		  		SELECT CU.COUPON_CODE, CU.REG_DT USE_DT, CU.PARKING_NO, CU.MEMBER_ID, CU.CAR_NO
+				     , CP.COUPON_NAME, CU.USE_QTY, (CP.DISCOUNT * CU.USE_QTY) DISCOUNT
+					 , CU.COUPON_USE_YN_PARENT USE_YN_PARENT, CU.COUPON_USE_YN USE_YN
+		  		  FROM T_COUPON_USE CU
+	             INNER JOIN T_COUPON_PURCHASE CP
+	                ON CU.COUPON_CODE = CP.COUPON_CODE
+	               AND CU.PARKING_NO = CP.PARKING_NO
+	               AND CU.COUPON_AREA_CODE = CP.COUPON_AREA_CODE
+	               AND CU.COUPON_MEMBER_ID = CP.COUPON_MEMBER_ID
+	               AND CU.PUBLISH_CODE = CP.PUBLISH_CODE		
+		    <![CDATA[		
+	             WHERE CU.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')
+		      	   AND CU.REG_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d') + INTERVAL 1 DAY
+		    ]]>
+				<if test="kParkingNo neq null and kParkingNo neq ''" >
+					AND CU.PARKING_NO = #{kParkingNo}
+				</if>
+				<if test="kCarNo neq null and kCarNo neq ''" >
+					AND CU.CAR_NO LIKE '%${kCarNo}%'
+				</if>
+				<if test="kUseYn neq null and kUseYn neq ''" >
+					AND CU.COUPON_USE_YN = #{kUseYn}
+				</if>
+	             
+	             UNION ALL
+	          
+	            SELECT OCD.OFF_COUPON_CODE COUPON_CODE, OCD.USE_DT, OCD.PARKING_NO, OCD.MEMBER_ID, OCD.CAR_NO
+			         , OCM.OFF_COUPON_NAME COUPON_NAME, '1' USE_QTY, OCM.DISCOUNT
+				     , OCD.PAY_YN_PARENT USE_YN_PARENT, OCD.PAY_YN USE_YN
+	              FROM T_OFFLINE_COUPON_DETAIL OCD
+                 INNER JOIN T_OFFLINE_COUPON_MASTER OCM
+                    ON OCD.OFF_COUPON_CODE = OCM.OFF_COUPON_CODE
+                 WHERE OCD.MEMBER_ID IS NOT NULL
+		    <![CDATA[		
+	               AND OCD.USE_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')
+		      	   AND OCD.USE_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d') + INTERVAL 1 DAY
+		    ]]>
+				<if test="kParkingNo neq null and kParkingNo neq ''" >
+					AND OCD.PARKING_NO = #{kParkingNo}
+				</if>
+				<if test="kCarNo neq null and kCarNo neq ''" >
+					AND OCD.CAR_NO LIKE '%${kCarNo}%'
+				</if>
+				<if test="kUseYn neq null and kUseYn neq ''" >
+					AND OCD.PAY_YN = #{kUseYn}
+				</if>
+		     ) X
+         INNER JOIN T_PARKING_INFO P
+            ON X.PARKING_NO = P.PARKING_NO
+         INNER JOIN T_PARKING_GOV_INFO GI
+            ON P.P_GOV_CODE = GI.P_GOV_CODE
+         INNER JOIN T_MEMBER_INFO MI
+            ON X.MEMBER_ID = MI.MEMBER_ID
+         INNER JOIN T_SYS_COMCODE SC
+            ON X.USE_YN_PARENT = SC.PARENT_CODE_ID
+           AND X.USE_YN = SC.CODE_ID
+         WHERE 1=1
+   		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND P.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+ 	    <if test="kMemberName neq null and kMemberName neq ''" >
+			AND MI.MEMBER_NAME = #{kMemberName}
+		</if> 
+		 ORDER BY X.USE_DT DESC
+	</select>
+</mapper>

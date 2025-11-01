@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.couponAreaManage">
+
+	<select id="select_applyList" parameterType="commonMap" resultType="commonMap">
+		SELECT ACAI.APP_COUPON_AREA_CODE, CMI.COUPON_MEMBER_ID, PI.PARKING_NAME
+		     , ACAI.CONFIRM_YN, ACAI.AREA_NAME, PGI.P_GOV_NAME
+		     , CMI.COUPON_MEMBER_NAME, CMI.MEMBER_PHONE
+		     , ACAI.CONFIRM_DT, UI.USER_NAME AS CONFIRM_NAME
+		     , ACAI.REG_DT, CONCAT('[' , ACAI.ZIP_CODE , '] ' , ACAI.ADDR_CODE1 , ' ' , ACAI.ADDR_CODE2) AS ADDRESS
+		     , CASE
+		     		WHEN CAI.DEL_YN IS NULL THEN 'N'
+		     		ELSE CAI.DEL_YN
+		       END AS DEL_YN
+		  FROM T_APPLY_COUPON_AREA_INFO ACAI
+		 INNER JOIN T_COUPON_MEMBER_INFO CMI
+		    ON ACAI.COUPON_MEMBER_ID = CMI.COUPON_MEMBER_ID
+		 INNER JOIN T_PARKING_INFO PI
+		    ON ACAI.PARKING_NO = PI.PARKING_NO
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+		    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON ACAI.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN T_COUPON_AREA_INFO CAI
+		    ON ACAI.PARKING_NO = CAI.PARKING_NO
+		   AND ACAI.COUPON_MEMBER_ID = CAI.COUPON_MEMBER_ID
+		   AND ACAI.APP_COUPON_AREA_CODE = CAI.APP_COUPON_AREA_CODE
+		 WHERE 1=1
+		<if test='kConfirmYn != "N" and kConfirmYn != "C"'>
+		   <![CDATA[AND ACAI.REG_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+		   <![CDATA[AND ACAI.REG_DT <= (STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY) ]]>
+		</if>   
+ 		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE LIKE '%${kParkingGovCode}%'
+		</if>
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND PI.PARKING_NO LIKE '%${kParkingNo}%'
+		</if>
+		<if test="kAreaName neq null and kAreaName neq ''" >
+			AND ACAI.AREA_NAME LIKE '%${kAreaName}%'
+		</if>
+		<if test="kConfirmYn neq null and kConfirmYn neq ''" >
+			AND ACAI.CONFIRM_YN = #{kConfirmYn}
+		</if>
+		<if test="kMemberName neq null and kMemberName neq ''" >
+			AND CMI.COUPON_MEMBER_NAME = #{kMemberName}
+		</if>
+		   ORDER BY CASE ACAI.CONFIRM_YN
+		            WHEN 'N' THEN 1
+		            WHEN 'Y' THEN 2
+		            WHEN 'C' THEN 3
+		            ELSE 4
+		          END, ACAI.REG_DT DESC, PGI.P_GOV_NAME, PI.PARKING_NAME
+	</select>
+	
+	<select id="select_applyDetail" parameterType="commonMap" resultType="commonMap">
+		SELECT ACAI.APP_COUPON_AREA_CODE, CMI.COUPON_MEMBER_ID, PI.PARKING_NAME
+		     , ACAI.CONFIRM_YN, ACAI.AREA_NAME, PGI.P_GOV_NAME
+		     , CMI.COUPON_MEMBER_NAME, CMI.MEMBER_PHONE
+		     , DATE_FORMAT(ACAI.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') AS CONFIRM_DT
+		     , UI.USER_NAME AS CONFIRM_NAME
+		     , ACAI.ZIP_CODE
+		     , CONCAT(ACAI.ADDR_CODE1 , ' ' , ACAI.ADDR_CODE2) AS ADDRESS
+		     , ACAI.ADDR_CODE1 AS ADDRESS1
+		     , ACAI.ADDR_CODE2 AS ADDRESS2
+		     , DATE_FORMAT(ACAI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		     , PGI.P_GOV_CODE, ACAI.PARKING_NO
+		     , CC.CODE_NAME1 AS CONFIRM_YN_NAME
+		     , ACAI.REJECT_REASON
+		     , CASE
+		     		WHEN CC2.CODE_NAME1 IS NULL THEN '미삭제'
+		     		ELSE CC2.CODE_NAME1
+		       END AS DEL_YN_NAME
+		  FROM T_APPLY_COUPON_AREA_INFO ACAI
+		 INNER JOIN T_COUPON_MEMBER_INFO CMI
+		    ON ACAI.COUPON_MEMBER_ID = CMI.COUPON_MEMBER_ID
+		 INNER JOIN T_PARKING_INFO PI
+		    ON ACAI.PARKING_NO = PI.PARKING_NO
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+		    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON ACAI.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC
+		    ON ACAI.CONFIRM_YN_PARENT = CC.PARENT_CODE_ID
+	  	   AND ACAI.CONFIRM_YN = CC.CODE_ID
+		  LEFT OUTER JOIN T_COUPON_AREA_INFO CAI
+		    ON ACAI.PARKING_NO = CAI.PARKING_NO
+		   AND ACAI.COUPON_MEMBER_ID = CAI.COUPON_MEMBER_ID
+		   AND ACAI.APP_COUPON_AREA_CODE = CAI.APP_COUPON_AREA_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE CC2
+		    ON CAI.DEL_YN_PARENT = CC2.PARENT_CODE_ID
+	  	   AND CAI.DEL_YN = CC2.CODE_ID
+		 WHERE 1=1
+		   AND ACAI.APP_COUPON_AREA_CODE = #{hAppCouponAreaCode}
+		 ORDER BY ACAI.REG_DT DESC, PGI.P_GOV_NAME, PI.PARKING_NAME
+	</select>
+	
+	<select id="select_parkingList" parameterType="commonMap" resultType="commonMap">
+		SELECT GROUP_CONCAT(CAI.PARKING_NO ORDER BY CAI.PARKING_NO SEPARATOR ', ') AS PARKING_NO
+		  FROM T_COUPON_AREA_INFO CAI
+		 WHERE CAI.COUPON_MEMBER_ID = #{hCouponMemberId}
+		   AND CAI.DEL_YN = 'N'
+	</select>
+	
+	<update id="update_couponArea">
+		UPDATE T_APPLY_COUPON_AREA_INFO
+		   SET CONFIRM_YN = #{confirmYn}
+		    <if test='gubn eq "Y"' >
+			 , PARKING_NO = #{pParkingNo}
+			</if>
+		    <if test='gubn eq "C"' >
+		     , REJECT_REASON = #{rejectReason}
+			</if> 
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE APP_COUPON_AREA_CODE = #{hAppCouponAreaCode}
+		   AND COUPON_MEMBER_ID = #{hCouponMemberId}
+	</update>
+	
+
+	<insert id="insert_couponArea">
+	INSERT INTO T_COUPON_AREA_INFO (
+		   COUPON_AREA_CODE, PARKING_NO, COUPON_MEMBER_ID, AREA_NAME, ZIP_CODE
+		 , ADDR_CODE1, ADDR_CODE2, GUGUN_PARENT, GUGUN, REG_ID
+		 , REG_DT, MOD_ID, MOD_DT, DEL_YN_PARENT, DEL_YN
+		 , APP_COUPON_AREA_CODE
+		 ) SELECT FN_MAKE_KEY('COUPON_AREA_CODE'), PARKING_NO, COUPON_MEMBER_ID, AREA_NAME, ZIP_CODE
+				, ADDR_CODE1, ADDR_CODE2, GUGUN_PARENT, GUGUN, #{userId}
+				, NOW(), #{userId}, NOW(), 'DEL_YN', 'N'
+				, #{hAppCouponAreaCode}
+	         FROM T_APPLY_COUPON_AREA_INFO
+			WHERE APP_COUPON_AREA_CODE = #{hAppCouponAreaCode}
+			
+	</insert>
+	
+</mapper>

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.index.index">
+	
+	<select id="select_parkInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NAME TEXT
+		     , PARKING_NO VALUE
+		  FROM T_PARKING_INFO
+		 WHERE 1=1
+		   AND USE_YN = 'Y'
+			<if test="userParkingGov neq null and userParkingGov neq ''" >
+			   AND P_GOV_CODE = #{userParkingGov}
+			</if>
+		 ORDER BY PARKING_NAME ASC
+	</select>
+	
+	<select id="select_salesStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(SUM(IF(Z.PAY_MONTH = 01, Z.PAY_PRICE, 0)), 0) AS M1
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 02, Z.PAY_PRICE, 0)), 0) AS M2
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 03, Z.PAY_PRICE, 0)), 0) AS M3
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 04, Z.PAY_PRICE, 0)), 0) AS M4
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 05, Z.PAY_PRICE, 0)), 0) AS M5
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 06, Z.PAY_PRICE, 0)), 0) AS M6
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 07, Z.PAY_PRICE, 0)), 0) AS M7
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 08, Z.PAY_PRICE, 0)), 0) AS M8
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 09, Z.PAY_PRICE, 0)), 0) AS M9
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 10, Z.PAY_PRICE, 0)), 0) AS M10
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 11, Z.PAY_PRICE, 0)), 0) AS M11
+			 , IFNULL(SUM(IF(Z.PAY_MONTH = 12, Z.PAY_PRICE, 0)), 0) AS M12
+		  FROM (
+				SELECT A.PAY_PRICE
+				     , DATE_FORMAT(A.PAY_DATE, '%m') AS PAY_MONTH
+		  		  FROM T_PARKING_PAY A
+		 		 INNER JOIN T_PARKING_CHARGE B
+		    		ON A.PAY_CODE = B.PAY_CODE
+		    	 WHERE B.PARKING_NO = #{hParkingName}
+		    	   AND B.PAY_GUBN = 'PG001'
+		    	   AND DATE_FORMAT(A.PAY_DATE, '%Y') = DATE_FORMAT(NOW(), '%Y') 
+		      ) Z
+		UNION ALL
+		SELECT  IFNULL(SUM(IF(Z.PAY_MONTH = 01, Z.PAY_PRICE, 0)), 0) AS M1
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 02, Z.PAY_PRICE, 0)), 0) AS M2
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 03, Z.PAY_PRICE, 0)), 0) AS M3
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 04, Z.PAY_PRICE, 0)), 0) AS M4
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 05, Z.PAY_PRICE, 0)), 0) AS M5
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 06, Z.PAY_PRICE, 0)), 0) AS M6
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 07, Z.PAY_PRICE, 0)), 0) AS M7
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 08, Z.PAY_PRICE, 0)), 0) AS M8
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 09, Z.PAY_PRICE, 0)), 0) AS M9
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 10, Z.PAY_PRICE, 0)), 0) AS M10
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 11, Z.PAY_PRICE, 0)), 0) AS M11
+			  , IFNULL(SUM(IF(Z.PAY_MONTH = 12, Z.PAY_PRICE, 0)), 0) AS M12
+		  FROM (
+		  		SELECT A.PARKING_PRICE PAY_PRICE
+				     , DATE_FORMAT(B.P_OUT_DT, '%m') AS PAY_MONTH
+		  		  FROM T_PARKING_CHARGE A
+		  		  LEFT OUTER JOIN T_PARKING_CAR_HISTORY B
+		  		    ON A.HISTORY_CODE = B.HISTORY_CODE
+		    	 WHERE A.PARKING_NO = #{hParkingName}
+		    	   AND A.PAY_GUBN = 'PG006'
+		    	   AND A.PAY_CODE IS NULL
+		    	   AND DATE_FORMAT(B.P_OUT_DT, '%Y') = DATE_FORMAT(NOW(), '%Y') 
+		      ) Z     
+	</select>
+	
+	<select id="select_webUseStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(SUM(IF(Z.LOGIN_MONTH = 01, 1, 0)), 0) AS M1
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 02, 1, 0)), 0) AS M2
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 03, 1, 0)), 0) AS M3
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 04, 1, 0)), 0) AS M4
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 05, 1, 0)), 0) AS M5
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 06, 1, 0)), 0) AS M6
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 07, 1, 0)), 0) AS M7
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 08, 1, 0)), 0) AS M8
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 09, 1, 0)), 0) AS M9
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 10, 1, 0)), 0) AS M10
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 11, 1, 0)), 0) AS M11
+		     , IFNULL(SUM(IF(Z.LOGIN_MONTH = 12, 1, 0)), 0) AS M12
+		  FROM (
+				SELECT DATE_FORMAT(LOGIN_DT, '%m') AS LOGIN_MONTH
+				  FROM T_MEMBER_LOG_INFO
+				 WHERE DATE_FORMAT(LOGIN_DT, '%Y') = DATE_FORMAT(NOW(), '%Y')
+			 ) Z
+	</select>
+	
+	<select id="select_parkingUse" parameterType="commonMap" resultType="commonMap">
+		SELECT T.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		     IFNULL(TRUNCATE(SUM(CASE WHEN T.ENT_HH = ${item.kTimeArr} THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,0),0)  AS `${item.kTimeArr}시`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_HH
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( SELECT PARKING_NO
+									       , DATE_FORMAT(P_ENT_DT, '%Y') ENT_YEAR
+									       , DATE_FORMAT(P_ENT_DT, '%m') ENT_MONTH
+									       , DATE_FORMAT(P_ENT_DT, '%H') ENT_HH
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE (PARKING_STATUS = 'IN' OR PARKING_STATUS = 'OUT')
+									     AND DEL_YN = 'N'
+									     AND DATE_FORMAT(P_ENT_DT, '%Y') = DATE_FORMAT(NOW(), '%Y')
+									     AND DATE_FORMAT(P_ENT_DT, '%m') = DATE_FORMAT(NOW(), '%m')
+		            
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+				   GROUP BY A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_HH
+		     ) T
+		 WHERE 1=1
+		   AND T.PARKING_NO = #{hParkingName}
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		 UNION ALL
+		 SELECT T.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		     IFNULL(TRUNCATE(SUM(CASE WHEN T.ENT_HH = ${item.kTimeArr} THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,0),0)  AS `${item.kTimeArr}시`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_HH
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( SELECT PARKING_NO
+									       , DATE_FORMAT(P_OUT_DT, '%Y') ENT_YEAR
+									       , DATE_FORMAT(P_OUT_DT, '%m') ENT_MONTH
+									       , DATE_FORMAT(P_OUT_DT, '%H') ENT_HH
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE P_OUT_DT IS NOT NULL
+									     AND PARKING_STATUS = 'OUT'
+									     AND DEL_YN = 'N'
+									     AND DATE_FORMAT(P_OUT_DT, '%Y') = DATE_FORMAT(NOW(), '%Y')
+									     AND DATE_FORMAT(P_OUT_DT, '%m') = DATE_FORMAT(NOW(), '%m')
+		            
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+				   GROUP BY A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_HH
+		     ) T
+		 WHERE 1=1
+		   AND T.PARKING_NO = #{hParkingName}
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+	</select>
+	
+	<select id="select_parkingDate" parameterType="commonMap" resultType="commonMap">
+		SELECT 
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			   IFNULL(SUM(IF(Z.P_ENT_DATE = ${item.kDayArray}, 1, 0)), 0) AS `D${item.kDayArray}`
+		</foreach>
+		  FROM (
+				SELECT DATE_FORMAT(P_ENT_DT, '%d') AS P_ENT_DATE
+				  FROM T_PARKING_CAR_HISTORY
+				 WHERE DATE_FORMAT(P_ENT_DT, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+				   AND PARKING_NO = #{hParkingName}
+				   AND P_OUT_DT IS NOT NULL
+			       AND PARKING_STATUS = 'OUT'
+			       AND DEL_YN = 'N'
+		     ) Z
+	</select>
+	
+	<select id="select_parkingTop5" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NAME, CNT 
+		  FROM (
+				    SELECT V.PARKING_NO, V.PARKING_NAME, V2.CNT, V.P_GOV_CODE
+					  FROM T_PARKING_INFO V
+  		             INNER JOIN ( 
+					  		  SELECT PARKING_NO, COUNT(*) CNT
+							    FROM T_PARKING_CAR_HISTORY
+							   WHERE P_OUT_DT IS NOT NULL
+							     AND PARKING_STATUS = 'OUT'
+							     AND DEL_YN = 'N'
+							     AND DATE_FORMAT(P_ENT_DT, '%Y') = DATE_FORMAT(NOW(), '%Y')
+							     AND DATE_FORMAT(P_ENT_DT, '%m') = DATE_FORMAT(NOW(), '%m')
+							   GROUP BY PARKING_NO
+						 ) V2
+						ON V.PARKING_NO = V2.PARKING_NO
+				 	 WHERE V.USE_YN = 'Y'
+					 ORDER BY V2.CNT DESC
+			    ) T
+		   <if test="userParkingGov neq null and userParkingGov neq ''" >
+			 WHERE P_GOV_CODE = #{userParkingGov}
+			</if>
+			 LIMIT 5
+	</select>
+	
+	<select id="select_unpaidTop5" parameterType="commonMap" resultType="commonMap">
+			SELECT CAR_NO, CNT, PARKING_PRICE
+			  FROM (
+					SELECT V.CAR_NO, V.CNT, V.P_GOV_CODE, PARKING_PRICE
+					  FROM (
+						 	 SELECT A.CAR_NO, COUNT(*) CNT, C.P_GOV_CODE
+						 	 	  , SUM(A.PARKING_PRICE) AS PARKING_PRICE
+							   FROM T_PARKING_CHARGE A
+							  INNER JOIN T_PARKING_CAR_HISTORY B
+							     ON A.HISTORY_CODE = B.HISTORY_CODE
+							  INNER JOIN T_PARKING_INFO C
+							     ON B.PARKING_NO = C.PARKING_NO
+							  INNER JOIN T_MEMBER_INFO D
+							     ON A.MEMBER_ID = D.MEMBER_ID
+							  WHERE A.PAY_GUBN = 'PG006'
+							    AND DATE_FORMAT(B.P_OUT_DT, '%Y') = DATE_FORMAT(NOW(), '%Y')
+   								AND D.CONFIRM_YN = 'Y'
+							  GROUP BY A.CAR_NO, C.P_GOV_CODE
+						 ) V
+					 ORDER BY V.PARKING_PRICE DESC
+			    ) T
+		   <if test="userParkingGov neq null and userParkingGov neq ''" >
+			 WHERE P_GOV_CODE = #{userParkingGov}
+			</if>
+			 LIMIT 5
+	</select>
+</mapper>

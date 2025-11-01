@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.LoginMapper">
+
+	<select id="login" parameterType="commonMap" resultType="commonMap">
+	    SELECT IFNULL(A.DEPT_ID, '') AS DEPT_ID
+	         , IFNULL(C.DEPT_NAME, '') AS DEPT_NAME
+	         , A.USER_ID
+	         , A.USER_NAME
+	         , A.USE_YN
+	         , D.ROLE_ID
+	         , E.ROLE_NAME
+	         , A.POS_GUBN
+	         , IFNULL(G1.CODE_NAME1, '') AS POS_GUBN_NAME
+	         , CASE WHEN D.USER_ID IS NOT NULL THEN 'Y' ELSE 'N' END AS ROLE_CHECK
+	         , E.ROLE_GUBN
+	         , G2.CODE_NAME1 ROLE_GUBN_NAME
+	         , FN_FORMAT('PHONE', A.USER_PHONE) USER_PHONE
+			 , IFNULL(E.P_GOV_CODE, '') P_GOV_CODE
+	      FROM T_USER_INFO A
+	      LEFT OUTER JOIN T_SYS_DEPT C
+	        ON A.DEPT_ID = C.DEPT_ID
+	       AND C.USE_YN = 'Y'
+	      LEFT OUTER JOIN T_SYS_USER_ROLE_INFO D
+	        ON A.USER_ID = D.USER_ID
+	      LEFT OUTER JOIN T_SYS_ROLE_INFO E
+	        ON D.ROLE_ID = E.ROLE_ID
+	      LEFT OUTER JOIN V_SYS_COMCODE G1
+	        ON A.POS_GUBN_PARENT = G1.PARENT_CODE_ID
+	       AND A.POS_GUBN = G1.CODE_ID
+	       AND G1.USER_ID = #{id}
+	       AND G1.USE_YN = 'Y'
+	      LEFT OUTER JOIN V_SYS_COMCODE G2
+	        ON E.ROLE_GUBN_PARENT = G2.PARENT_CODE_ID
+	       AND E.ROLE_GUBN = G2.CODE_ID
+	       AND G2.USER_ID = #{id}
+	       AND G2.USE_YN = 'Y'
+	     WHERE A.USER_ID = #{id}
+	       AND A.USER_PW = #{pw}
+	</select>
+	
+	<insert id="Insert_userLog">
+		INSERT INTO T_USER_LOG_INFO (
+            LOGIN_DT, MEMBER_ID, IP_ADDR, BROWSER_NAME
+          , REQUEST_URI, MOBILE_YN
+          ) VALUES (
+            NOW(), #{memberId}, #{requestIp}, #{browserName}
+          , #{requestUri}, #{mobileYn}
+          )
+	</insert>
+	
+</mapper>

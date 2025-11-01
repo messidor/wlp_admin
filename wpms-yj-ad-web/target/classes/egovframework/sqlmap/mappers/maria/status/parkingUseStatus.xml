@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.parkingUseStatus">
+
+	<select id="select_Parking" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARKING_NO VALUE, A.PARKING_NAME TEXT
+		  FROM T_PARKING_INFO A
+		 WHERE A.USE_YN = 'Y'
+		 
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND A.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		
+	</select>
+
+	<select id="select_ParkingList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARKING_NO, A.PARKING_NAME, PGI.P_GOV_NAME, PCI.P_COMP_NAME, CONCAT(A.PARKING_ADDR , ' ' , A.PARKING_ADDR2) PARKING_ADDR
+  	      FROM T_PARKING_INFO A
+          LEFT OUTER JOIN T_PARKING_COMP_INFO PCI 
+            ON A.P_COMP_CODE = PCI.P_COMP_CODE
+          LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+            ON A.P_GOV_CODE = PGI.P_GOV_CODE
+  	     WHERE 1=1
+		   AND A.USE_YN = 'Y'
+		   AND PCI.USE_YN = 'Y'
+		   AND PGI.USE_YN = 'Y'
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND A.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND A.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		<if test="kCarNum neq null and kCarNum neq ''" >
+  		   AND EXISTS (
+		   				SELECT 1
+ 		   				  FROM T_PARKING_CAR_HISTORY V
+						 WHERE V.PARKING_NO = A.PARKING_NO
+						   AND V.CAR_NO LIKE '%${kCarNum}%'
+		     )
+    	</if>
+		ORDER BY A.PARKING_NAME ASC
+
+	</select>
+
+	<select id="select_ParkingUseStatus" parameterType="commonMap" resultType="commonMap">
+		SELECT T.CAR_NO, CONCAT(T.ENT_DT_YY , '년') USE_YEAR, CONCAT(CAST(T.ENT_DT_MM AS UNSIGNED),'월') USE_MONTH
+		     , CONCAT(FORMAT(COUNT(T.CAR_NO), 0) , '건') USE_CNT
+		     , T.IS_MEMBER_NAME
+		  FROM (			
+                SELECT H.CAR_NO, DATE_FORMAT(H.P_ENT_DT, '%Y') ENT_DT_YY, DATE_FORMAT(H.P_ENT_DT, '%m') ENT_DT_MM
+                     , CASE WHEN C.CAR_NO IS NOT NULL THEN '회원' ELSE '비회원' END AS IS_MEMBER_NAME
+                  FROM T_PARKING_CAR_HISTORY H
+                  LEFT OUTER JOIN T_CAR_INFO C
+                    ON H.CAR_NO = C.CAR_NO
+				 WHERE H.PARKING_NO = #{hParkingNo}
+
+				<if test="kUseYear neq null and kUseYear neq ''" >
+					AND H.P_ENT_DT LIKE '${kUseYear}%'
+				</if>
+
+				<if test="kUseMonth neq null and kUseMonth neq ''" >
+					AND H.P_ENT_DT LIKE '${kUseYear}-${kUseMonth}%'
+				</if>
+
+				<if test="kCarNum neq null and kCarNum neq ''" >
+					AND H.CAR_NO LIKE '%${kCarNum}%'
+				</if>
+				
+				<choose>
+				    <when test='kMemberYn eq "Y"'>
+				    AND C.CAR_NO IS NOT NULL
+				    </when>
+				    <when test='kMemberYn eq "N"'>
+				    AND C.CAR_NO IS NULL
+                    </when>
+				</choose>
+
+			 ) T
+		 GROUP BY T.CAR_NO, T.ENT_DT_YY, T.ENT_DT_MM, T.IS_MEMBER_NAME
+		 ORDER BY COUNT(T.CAR_NO) DESC
+
+	</select>
+	
+	<select id="select_ParkingUseStatusExcel" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARKING_NO, A.PARKING_NAME, PGI.P_GOV_NAME, PCI.P_COMP_NAME
+		     , CONCAT(A.PARKING_ADDR , ' ' , A.PARKING_ADDR2) PARKING_ADDR
+		     , CASE WHEN C.CAR_NO IS NOT NULL THEN '회원' ELSE '비회원' END AS MEMBER_YN_NAME
+		     , T.CAR_NO
+		     , CONCAT(ENT_DT_YY,'년') USE_YEAR
+		     , CONCAT(CAST(ENT_DT_MM AS UNSIGNED),'월') USE_MONTH
+		     , CONCAT(FORMAT(COUNT(T.CAR_NO), 0),'건') USE_CNT
+		     , ROW_NUMBER() OVER(ORDER BY A.PARKING_NAME ASC, T.ENT_DT_YY, T.ENT_DT_MM, COUNT(T.CAR_NO) DESC) AS NUM
+  	      FROM (
+			    SELECT CAR_NO, DATE_FORMAT(P_ENT_DT, '%Y') ENT_DT_YY, DATE_FORMAT(P_ENT_DT, '%m') ENT_DT_MM, PARKING_NO
+		  		  FROM T_PARKING_CAR_HISTORY
+			 ) T
+          LEFT OUTER JOIN T_PARKING_INFO A
+			ON A.PARKING_NO = T.PARKING_NO
+          LEFT OUTER JOIN T_PARKING_COMP_INFO PCI 
+            ON A.P_COMP_CODE = PCI.P_COMP_CODE
+          LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+            ON A.P_GOV_CODE = PGI.P_GOV_CODE
+          LEFT OUTER JOIN T_CAR_INFO C
+            ON T.CAR_NO = C.CAR_NO
+  	     WHERE 1=1
+		   AND A.USE_YN = 'Y'
+		   AND PCI.USE_YN = 'Y'
+		   AND PGI.USE_YN = 'Y'
+		   AND T.ENT_DT_YY = #{kUseYear}
+	    <if test="hParkingNo neq null and hParkingNo neq ''" >
+			AND A.PARKING_NO = #{hParkingNo}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND A.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		<if test="kUseMonth neq null and kUseMonth neq ''" >
+		    AND T.ENT_DT_MM = #{kUseMonth}
+		</if>
+		<if test="kCarNum neq null and kCarNum neq ''" >
+		    AND T.CAR_NO LIKE '%${kCarNum}%'
+		</if>
+		<if test="kCarNum neq null and kCarNum neq ''" >
+  		   AND EXISTS (
+		   				SELECT 1
+ 		   				  FROM T_PARKING_CAR_HISTORY V
+						 WHERE V.PARKING_NO = A.PARKING_NO
+						   AND V.CAR_NO LIKE '%${kCarNum}%'
+		     )
+    	</if>
+                
+        <choose>
+            <when test='kMemberYn eq "Y"'>
+            AND C.CAR_NO IS NOT NULL
+            </when>
+            <when test='kMemberYn eq "N"'>
+            AND C.CAR_NO IS NULL
+            </when>
+        </choose>
+		 GROUP BY T.CAR_NO, ENT_DT_YY, ENT_DT_MM, A.PARKING_NO, A.PARKING_NAME, PGI.P_GOV_NAME, PCI.P_COMP_NAME, A.PARKING_ADDR, A.PARKING_ADDR2, C.CAR_NO
+		 ORDER BY A.PARKING_NAME ASC, T.ENT_DT_YY, T.ENT_DT_MM, COUNT(T.CAR_NO) DESC
+
+	</select>
+</mapper>

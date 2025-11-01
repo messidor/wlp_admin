@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.apiNewOutStatus">
+	
+	<select id="select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN A.RESULT_CODE = 00 THEN '성공' ELSE '실패' END RESULT_GUBN
+		     , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') REG_DT, A.ERR_MSG
+		     , A.OUT_API_CODE, A.SERVICE_KEY, A.PARKING_AREA_CODE, A.CAR_NUMBER_RECV
+	         , A.PARKING_FEE, A.REDUCE_CODE, DATE_FORMAT(A.OUT_DT, '%Y-%m-%d %H:%i:%s') OUT_DT, A.RESULT_CODE
+	         , A.RESULT_MSG, A.RESULT_MSG, A.PAYMENT_YN, DATE_FORMAT(A.MDFCN_DT, '%Y-%m-%d %H:%i:%s') MDFCN_DT
+	         , DATE_FORMAT(A.RECEIVE_DT, '%Y-%m-%d %H:%i:%s') RECEIVE_DT
+	         , A.TOTAL_PARKING_FEE, A.TOTAL_PARKING_PRICE, A.PRE_PAY_FEE, A.PARKING_PRICE
+	         , A.REDUCTION_NAME, A.REDUCTION_RATE, A.DISCOUNT_FEE, A.CHARGE_PRICE
+             , IFNULL(A.ACTUAL_PAY_YN, 'N') AS ACTUAL_PAY_YN
+	      FROM T_OUT_CAR_API_HISTORY A
+	     WHERE 1=1
+				
+		<if test="carNumber neq null and carNumber neq ''" >
+			AND A.CAR_NUMBER_RECV = #{carNumber}
+		</if>
+		
+		<if test="kParkingNo neq null and kParkingNo neq ''">
+			AND A.PARKING_AREA_CODE = #{kParkingNo}
+		</if>
+		
+		<if test="kServiceKey neq null and kServiceKey neq ''">
+			AND A.SERVICE_KEY = #{kServiceKey}
+		</if>
+		
+		<choose>
+			<when test ='kResultGubn == "Y"'>
+				AND A.RESULT_CODE = 00
+			</when>
+			<when test ='kResultGubn == "N"'>
+				AND A.RESULT_CODE != '00'
+			</when>
+		</choose>
+  		   AND A.OCCUR_DT = REPLACE( #{regDt}, '-', '')
+		 ORDER BY A.REG_DT DESC
+	</select>
+	
+	<select id="select_parkInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT CONCAT(PARKING_NAME , '(' , PARKING_AREA_CODE, ')') AS TEXT
+		     , PARKING_AREA_CODE VALUE
+		  FROM T_PARKING_INFO
+		 WHERE API_VER_GUBN = 2
+		   AND USE_YN = 'Y'
+	</select>
+</mapper>

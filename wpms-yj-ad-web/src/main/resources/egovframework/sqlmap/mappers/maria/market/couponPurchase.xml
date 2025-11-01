@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.couponPurchase">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT ROW_NUMBER() OVER(ORDER BY CP.REG_DT DESC) AS NUM
+			 , DATE_FORMAT(CP.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			 , CM.COUPON_MEMBER_NAME
+			 , CM.MEMBER_PHONE
+			 , G.P_GOV_NAME
+			 , P.PARKING_NAME
+			 , CP.COUPON_NAME
+			 , CP.COUPON_QTY
+			 , FORMAT(CP.COUPON_QTY, 0) COUPON_QTY_FMT
+			 , CP.PURCHASE_PRICE
+			 , FORMAT(CP.PURCHASE_PRICE, 0) PURCHASE_PRICE_FMT
+			 , CC2.CODE_NAME1 AS PC_GUBN_NAME
+			 , CC3.CODE_NAME1 AS COUPON_GUBN_NAME
+		  FROM T_COUPON_PURCHASE CP
+		 INNER JOIN T_PARKING_INFO P
+		    ON CP.PARKING_NO = P.PARKING_NO
+		 INNER JOIN T_PARKING_GOV_INFO G
+		    ON P.P_GOV_CODE = G.P_GOV_CODE
+		  LEFT OUTER JOIN T_COUPON_MEMBER_INFO CM
+		    ON CP.COUPON_MEMBER_ID = CM.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC2
+		    ON CP.PC_GUBN_PARENT = CC2.PARENT_CODE_ID
+		   AND CP.PC_GUBN = CC2.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC3
+		    ON CP.COUPON_USE_GUBN_PARENT = CC3.PARENT_CODE_ID
+		   AND CP.COUPON_USE_GUBN = CC3.CODE_ID
+		 WHERE 1=1
+<![CDATA[		   
+		   AND CP.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')
+		   AND CP.REG_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d')+ INTERVAL 1 DAY
+]]>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND P.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+ 	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND CP.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kMidMemberName neq null and kMidMemberName neq ''" >
+			AND CM.COUPON_MEMBER_NAME = #{kMidMemberName}
+		</if>
+		<if test="kPcGubn neq null and kPcGubn neq ''" >
+			AND CP.PC_GUBN = #{kPcGubn}
+		</if>
+		 ORDER BY CP.REG_DT DESC
+	</select>
+</mapper>

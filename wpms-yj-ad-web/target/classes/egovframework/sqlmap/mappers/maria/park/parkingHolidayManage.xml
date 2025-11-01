@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingHolidayManage">
+
+	<select id="select_holidaylist" parameterType="commonMap" resultType="commonMap">
+		SELECT A.H_KEY AS ID
+             , DATE_FORMAT(STR_TO_DATE(CONCAT(A.H_DATE_START, H_TIME_START), '%Y%m%d%H%i%s'), '%Y-%m-%dT%H:%i:%s') AS `START`
+             , DATE_FORMAT(STR_TO_DATE(CONCAT(A.H_DATE_END, H_TIME_END), '%Y%m%d%H%i%s'), '%Y-%m-%dT%H:%i:%s') AS `END`
+             , STR_TO_DATE(A.H_DATE_START, '%Y%m%d') AS H_DATE_START
+   			 , STR_TO_DATE(A.H_DATE_END, '%Y%m%d') AS H_DATE_END
+             , SUBSTR(A.H_TIME_START, 1,2) AS START_H
+             , SUBSTR(A.H_TIME_START, 3,2) AS START_M
+             , SUBSTR(A.H_TIME_END, 1,2) AS END_H
+             , SUBSTR(A.H_TIME_END, 3,2) AS END_M
+             , CONCAT(B.PARKING_NAME , '(' , A.H_REMARK , ')') AS TITLE
+             , IFNULL(A.H_REMARK, '') AS REMARK
+             , A.PARKING_NO AS NAME
+             , B.PARKING_NAME AS PARKNAME
+             , B.COLOR AS COLOR
+             , IFNULL(B.FONT_COLOR, '#FFFFFF') AS TEXT_COLOR
+             , A.IS_REPEAT AS ALLDAY
+             , B.P_GOV_CODE
+          FROM T_PARKING_HOLIDAY A
+         INNER JOIN T_PARKING_INFO B
+            ON A.PARKING_NO = B.PARKING_NO
+         WHERE 1=1
+           AND B.USE_YN = 'Y'
+        <if test="userParkingGov neq null and userParkingGov neq ''" >
+           AND B.P_GOV_CODE = #{userParkingGov}
+        </if>
+        <if test="kParkingNo neq null and kParkingNo neq '' and kParkingNo neq 'null'" >
+           AND A.PARKING_NO = #{kParkingNo}
+        </if>
+	</select>
+
+	<select id="select_parkInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NAME TEXT
+		     , PARKING_NO VALUE
+		  FROM T_PARKING_INFO
+		 WHERE 1=1
+		   AND USE_YN = 'Y'
+	</select>
+	
+	<insert id="insert_holidayManage">
+		INSERT INTO T_PARKING_HOLIDAY (
+                    H_KEY
+                  , PARKING_NO
+                  , H_DATE_START
+                  , H_DATE_END
+                  , H_REMARK
+                  , IS_REPEAT
+                  , REG_ID
+                  , REG_DT
+                  , MOD_ID
+                  , MOD_DT
+                  , H_TIME_START
+                  , H_TIME_END
+                ) VALUES (
+                    fn_make_key('HOLIDAY_CODE')
+                  , #{hPopupName}
+                  , REPLACE(#{startDate},'-','')
+                  , REPLACE(#{endDate},'-','')
+                  , #{kPopupRemark}
+                  , #{hPopupRepeat}
+                  , #{userId}
+                  , NOW()
+                  , #{userId}
+                  , NOW()
+                  , #{startTime}
+                  , #{endTime}
+                )
+	</insert>
+	
+	<update id="update_holidayManage">
+		UPDATE T_PARKING_HOLIDAY
+           SET H_DATE_START = REPLACE(#{startDate},'-','')
+             , H_DATE_END = REPLACE(#{endDate},'-','')
+             , PARKING_NO = #{hPopupName}
+             , IS_REPEAT = #{hPopupRepeat}
+             , H_REMARK = #{kPopupRemark}
+             , MOD_ID = #{userId}
+             , MOD_DT = NOW()
+		<if test="startTime neq '' and startTime neq null" >
+           	 , H_TIME_START = #{startTime}
+             , H_TIME_END = #{endTime}
+        </if>
+         WHERE H_KEY = #{hPopupKey}
+	</update>
+	
+	<delete id="delete_holidayManage">
+		DELETE FROM T_PARKING_HOLIDAY
+         WHERE H_KEY = #{hPopupKey}
+           AND PARKING_NO = #{hPopupName}
+	</delete>
+	
+</mapper>

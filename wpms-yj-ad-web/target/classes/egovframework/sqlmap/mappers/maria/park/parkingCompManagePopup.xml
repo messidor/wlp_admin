@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingCompManagePopup">
+
+	<select id="select_comp" parameterType="commonMap" resultType="commonMap">
+		SELECT PCI.P_COMP_CODE, PCI.P_COMP_NAME, PCI.P_COMP_TEL
+		     , PCI.P_COMP_POST, PCI.P_COMP_ADDR, PCI.P_COMP_ADDR2
+			 , PCI.P_MANAGER, PCI.P_MANAGER_PHONE, PCI.P_MANAGER_EMAIL
+			 , PCI.USE_YN
+			 , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'USE_YN' AND CODE_ID = PCI.USE_YN) AS USE_YN_NAME
+			 , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PCI.REG_ID) as REG_ID
+		     , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PCI.MOD_ID) as MOD_ID
+			 , DATE_FORMAT(PCI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			 , DATE_FORMAT(PCI.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			 , PCI.P_SERVICE_KEY, PCI.P_SERVICE_KEY_YN
+		  FROM T_PARKING_COMP_INFO PCI
+		 WHERE PCI.P_COMP_CODE = #{hCompCode}
+	</select>
+	
+	<select id="select_useYn" parameterType="commonMap" resultType="commonMap">
+		SELECT USE_YN
+		  FROM T_PARKING_COMP_INFO
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</select>
+	
+	
+	<select id="select_use_comp" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) USE_CNT
+		  FROM T_PARKING_INFO
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</select>
+	
+	<insert id="insert_parkingCompInfo">
+		INSERT INTO T_PARKING_COMP_INFO (
+			   		  P_COMP_CODE, P_COMP_NAME, P_COMP_TEL, P_COMP_POST, P_COMP_ADDR
+			   		, P_COMP_ADDR2, P_MANAGER, P_MANAGER_PHONE, P_MANAGER_EMAIL
+			   		, USE_YN_PARENT, USE_YN, REG_ID
+			   		, REG_DT, MOD_ID, MOD_DT
+	  		 ) VALUES (fn_make_key('PARKING_COMP_CODE'), #{pCompName}, #{pCompTel}, #{pCompPost}, #{pCompAddr}
+	  		 		, #{pCompAddr2}, #{pManager}, #{pManagerPhone}, #{pManagerEmail}
+	  		 	    , 'USE_YN', #{useYn}, #{userId}
+	  		 	    , NOW(), #{userId}, NOW()
+			 )
+	</insert>
+
+	<update id="update_parkingCompInfo">
+		UPDATE T_PARKING_COMP_INFO
+		   SET P_COMP_NAME = #{pCompName}
+		     , P_COMP_TEL = #{pCompTel}
+		     , P_COMP_POST = #{pCompPost}
+		     , P_COMP_ADDR = #{pCompAddr}
+		     , P_COMP_ADDR2 = #{pCompAddr2}
+		     , P_MANAGER = #{pManager}
+		     , P_MANAGER_PHONE = #{pManagerPhone}
+		     , P_MANAGER_EMAIL = #{pManagerEmail}
+		     , USE_YN = #{useYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</update>
+
+	<update id="update_parkingInfo">
+		UPDATE T_PARKING_INFO
+		   SET P_COMP_CODE = ''
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</update>
+
+	<update id="update_parkingServiceInfo">
+		UPDATE T_PARKING_COMP_INFO
+		   SET P_SERVICE_KEY = #{pServiceKey}
+		     , P_SERVICE_KEY_YN_PARENT = 'USE_YN'
+		     , P_SERVICE_KEY_YN = 'Y'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</update>
+
+	<delete id="delete_parkingCompInfo">
+		DELETE FROM T_PARKING_COMP_INFO
+		 WHERE P_COMP_CODE = #{hCompCode}
+	</delete>
+
+</mapper>

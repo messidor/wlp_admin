@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.reductionManage">
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT RI.REDUCTION_CODE, RI.REDUCTION_GUBN, RI.REDUCTION_NAME, RI.REDUCTION_RATE, RI.REDUCTION_OPT
+			 , RI.REDUCTION_ORDER, CONVERT(IFNULL(RI.FREE_HOUR, 0), CHAR) FREE_HOUR, RI.ADDR_CHK_YN, RI.USE_YN, RI.MOD_ID
+			 , RI.MOD_DT, UI.USER_NAME
+			 , RI.APPLY_CAR_KIND, RI.APPLY_RIDING_CNT
+		  FROM T_REDUCTION_INFO RI
+		  LEFT OUTER JOIN T_USER_INFO UI
+	        ON RI.REG_ID = UI.USER_ID
+		 WHERE 1=1
+		 <if test="kSearchName neq null and kSearchName neq ''" >
+			AND RI.REDUCTION_NAME LIKE '%${kSearchName}%'
+		</if>
+		 ORDER BY RI.REDUCTION_CODE ASC
+	</select>
+	
+	<insert id="insert_reduction">
+		INSERT INTO T_REDUCTION_INFO (
+   	     	   REDUCTION_CODE, REDUCTION_GUBN_PARENT, REDUCTION_GUBN, REDUCTION_NAME, USE_YN_PARENT
+   	     	 , USE_YN, REG_ID, REG_DT, MOD_ID, MOD_DT
+   	     	 , REDUCTION_RATE, REDUCTION_OPT, REDUCTION_ORDER, FREE_HOUR, ADDR_CHK_YN_PARENT, ADDR_CHK_YN
+   	     	 , APPLY_CAR_KIND_PARENT, APPLY_CAR_KIND
+   	     	 , APPLY_RIDING_CNT_PARENT, APPLY_RIDING_CNT
+	  		 ) VALUES (
+	  		   FN_MAKE_KEY('REDUCTION_CODE'), 'REDUCTION_GUBN', #{grdReductionGubn}, #{grdReductionName}, 'USE_YN'
+ 			 , #{grdUseYn}, #{userIdEnc}, NOW(), #{userIdEnc}, NOW()
+ 			 , #{grdReductionRate}, #{grdReductionOpt}, #{grdReductionOrder}, #{grdFreeHour}, 'USE_YN', #{grdAddrChkYn}
+ 			 , 'APPLY_CAR_KIND', #{grdApplyCarKind}
+ 			 , 'APPLY_RIDING_CNT', #{grdApplyRidingCnt}
+			 )
+	</insert>
+
+	<update id="update_reduction">
+		UPDATE T_REDUCTION_INFO
+		   SET REDUCTION_GUBN = #{grdReductionGubn}
+			 , REDUCTION_NAME = #{grdReductionName}
+			 , USE_YN = #{grdUseYn}
+			 , REDUCTION_RATE = #{grdReductionRate}
+			 , REDUCTION_OPT = #{grdReductionOpt}
+			 , REDUCTION_ORDER = #{grdReductionOrder}
+			 , FREE_HOUR = #{grdFreeHour}
+			 , ADDR_CHK_YN = #{grdAddrChkYn}
+			 , APPLY_CAR_KIND = #{grdApplyCarKind}
+			 , APPLY_RIDING_CNT = #{grdApplyRidingCnt}
+		     , MOD_ID = #{userIdEnc}
+		     , MOD_DT = NOW()
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+	</update>
+	
+	<delete id="delete_reduction">
+		DELETE FROM T_PARKING_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+	</delete>
+</mapper>

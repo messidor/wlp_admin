@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingManagePopup">
+	
+	<select id="select_newKey" parameterType="commonMap" resultType="commonMap">
+		select fn_make_key('PARKING_NO') AS parkingNo
+	</select>
+	
+	<select id="select_park" parameterType="commonMap" resultType="commonMap">
+		SELECT PI.PARKING_NO, PI.PARKING_NAME
+  			 , FORMAT(IFNULL(PI.MINUTE_STD, 0), 0) AS MINUTE_STD
+		     , CONCAT(FORMAT(IFNULL(PI.MINUTE_PRICE, 0), 0) , '원') AS MINUTE_PRICE
+  			 , CONCAT(FORMAT(IFNULL(PI.DAY_PRICE, 0), 0) , '원') AS DAY_PRICE
+		     , PI.GUGUN, PI.DONG, IFNULL(PI.PARKING_TEL, '') AS PARKING_TEL, B.P_GOV_TEL, IFNULL(PI.PARKING_SPOT, 0) AS PARKING_SPOT, PI.DETAIL_INFO
+             , PI.PARKING_POST, PI.PARKING_ADDR, PI.PARKING_ADDR2, PI.USE_YN, PI.PRICE_CHG_GUBN
+             , PI.API_VER_GUBN, PI.COLOR, PI.FONT_COLOR, PI.H_USE_GUBN
+             , PI.P_COMP_CODE
+		     , DATE_FORMAT(PI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		     , DATE_FORMAT(PI.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		     , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PI.REG_ID) as REG_ID
+		     , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PI.MOD_ID) as MOD_ID
+		     , PI.PARKING_AREA_CODE, PI.PARKING_AREA_CODE_YN, PI.P_GOV_CODE
+		     , PI.PARKING_PRICE_DETAIL, PI.P_GOV_ACCOUNT_CODE
+		     , IFNULL(PI.PARKING_SPOT_NOW, 0) AS PARKING_SPOT_NOW
+		     , PI.FREE_MIN, PI.TURNING_MIN
+
+		     , PI.N_STD_PRICE
+		     , PI.H_STD_PRICE
+		     , PI.N_10M_PRICE
+		     , PI.H_10M_PRICE
+		     , PI.N_20M_PRICE
+		     , PI.H_20M_PRICE
+		     , PI.N_DAY_PRICE
+		     , PI.H_DAY_PRICE
+		     
+			 , W.WEEK_DAY
+		     , SUBSTR(PI.N_ST_TIME, 1, 2) AS N_ST_TIME_H
+		     , SUBSTR(PI.N_ST_TIME, 3, 2) AS N_ST_TIME_M
+		     , SUBSTR(PI.N_FN_TIME, 1, 2) AS N_FN_TIME_H
+		     , SUBSTR(PI.N_FN_TIME, 3, 2) AS N_FN_TIME_M
+
+		     , SUBSTR(PI.H_ST_TIME, 1, 2) AS H_ST_TIME_H
+		     , SUBSTR(PI.H_ST_TIME, 3, 2) AS H_ST_TIME_M
+		     , SUBSTR(PI.H_FN_TIME, 1, 2) AS H_FN_TIME_H
+		     , SUBSTR(PI.H_FN_TIME, 3, 2) AS H_FN_TIME_M
+
+			 , PI.SP_PERIOD_YN
+			 , DATE_FORMAT(PI.SP_ST_DATE, '%Y-%m-%d') AS SP_ST_DATE
+			 , DATE_FORMAT(PI.SP_FN_DATE, '%Y-%m-%d') AS SP_FN_DATE
+		     
+		     , SUBSTR(PI.SP_N_ST_TIME, 1, 2) AS SP_N_ST_TIME_H
+		     , SUBSTR(PI.SP_N_ST_TIME, 3, 2) AS SP_N_ST_TIME_M
+		     , SUBSTR(PI.SP_N_FN_TIME, 1, 2) AS SP_N_FN_TIME_H
+		     , SUBSTR(PI.SP_N_FN_TIME, 3, 2) AS SP_N_FN_TIME_M
+
+		     , SUBSTR(PI.SP_H_ST_TIME, 1, 2) AS SP_H_ST_TIME_H
+		     , SUBSTR(PI.SP_H_ST_TIME, 3, 2) AS SP_H_ST_TIME_M
+		     , SUBSTR(PI.SP_H_FN_TIME, 1, 2) AS SP_H_FN_TIME_H
+		     , SUBSTR(PI.SP_H_FN_TIME, 3, 2) AS SP_H_FN_TIME_M
+		     , API_URL
+		     , MAP_MARK_GUBN
+		     , PARKING_LATITUDE
+		     , PARKING_LONGITUDE
+		  FROM T_PARKING_INFO PI
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO B
+  			ON PI.P_GOV_CODE = B.P_GOV_CODE
+  		  LEFT OUTER JOIN T_PARKING_WEEKDAY W
+  		  	ON PI.PARKING_NO = W.PARKING_NO
+		 WHERE PI.PARKING_NO = #{hParkingNo}
+	</select>
+	
+	<select id="select_parkCompList" parameterType="commonMap" resultType="commonMap">
+		SELECT P_COMP_CODE AS VALUE, P_COMP_NAME AS TEXT
+		  FROM T_PARKING_COMP_INFO
+		 WHERE USE_YN = 'Y'
+		 ORDER BY P_COMP_NAME
+	</select>
+	
+	<select id="select_dongList" parameterType="commonMap" resultType="commonMap">
+		SELECT CODE_ID AS VALUE, CODE_NAME1 AS TEXT 
+          FROM T_SYS_COMCODE
+         WHERE USE_YN = 'Y'
+		 
+		<if test="gugun neq null and gugun neq ''" >
+			<![CDATA[AND PARENT_CODE_ID = #{gugun}]]>
+		</if>
+		
+		 ORDER BY CODE_ORDER
+	</select>
+	
+	<select id="select_bankList" parameterType="commonMap" resultType="commonMap">
+		SELECT A.P_GOV_ACCOUNT_CODE VALUE, A.P_GOV_ACCOUNT_NAME, A.P_GOV_ACCOUNT_NUMBER, A.P_GOV_BANK_NAME
+  	      FROM T_PARKING_GOV_BANK_INFO A
+ 		 WHERE A.USE_YN = 'Y'
+		 
+		<if test="pGovCode neq null and pGovCode neq ''" >
+			<![CDATA[AND A.P_GOV_CODE = #{pGovCode}]]>
+		</if>
+		
+	</select>
+	
+	<select id="select_parkGovList" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_CODE AS VALUE, P_GOV_NAME AS TEXT
+		  FROM T_PARKING_GOV_INFO
+		 WHERE USE_YN = 'Y'
+		 ORDER BY P_GOV_CODE
+	</select>
+		
+	<select id="select_parkingAreaCode" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) PAKING_CNT
+		  FROM T_PARKING_INFO
+		 WHERE PARKING_AREA_CODE = #{parkingAreaCode}
+	</select>
+	
+	<select id="select_parkingNo" parameterType="commonMap" resultType="commonMap">
+		SELECT FN_MAKE_KEY('PARKING_NO') NEW_PARKING_NO
+		  FROM DUAL
+	</select>
+	
+	<insert id="insert_parkingInfo">
+		INSERT INTO T_PARKING_INFO (
+			   		  PARKING_NO, PARKING_NAME, PARKING_POST, PARKING_ADDR, PARKING_ADDR2
+					, GUGUN_PARENT, GUGUN, DONG_PARENT, DONG, PARKING_TEL
+					, MINUTE_PRICE, DAY_PRICE, PARKING_SPOT, USE_YN_PARENT, USE_YN
+					, COLOR, REG_ID, REG_DT, MOD_ID, MOD_DT
+					, P_COMP_CODE, PARKING_SPOT_NOW, DETAIL_INFO, PARKING_PRICE_DETAIL, PARKING_AREA_CODE
+					, PARKING_AREA_CODE_YN_PARENT, PARKING_AREA_CODE_YN
+					, P_GOV_CODE, P_GOV_ACCOUNT_CODE, MINUTE_STD, TURNING_MIN, N_STD_PRICE
+					, H_STD_PRICE, N_10M_PRICE, H_10M_PRICE, N_20M_PRICE, H_20M_PRICE
+					, N_DAY_PRICE, H_DAY_PRICE
+					, N_ST_TIME
+					, N_FN_TIME
+					, H_ST_TIME
+					, H_FN_TIME
+					, FREE_MIN, PRICE_CHG_GUBN_PARENT, PRICE_CHG_GUBN, FONT_COLOR, SP_PERIOD_YN_PARENT
+					, SP_PERIOD_YN, API_VER_GUBN_PARENT, API_VER_GUBN, H_USE_GUBN_PARENT, H_USE_GUBN
+					, API_URL
+					, PARKING_LATITUDE
+					, PARKING_LONGITUDE
+					<if test='spPeriodYn eq "Y"'>
+					, SP_ST_DATE, SP_FN_DATE
+					, SP_N_ST_TIME
+					, SP_N_FN_TIME
+					, SP_H_ST_TIME
+					, SP_H_FN_TIME
+					</if>
+					, MAP_MARK_GUBN_PARENT, MAP_MARK_GUBN
+		) VALUES (
+	  		          #{newParkingNo}, #{parkingName}, #{parkingPost}, #{parkingAddr}, #{parkingAddr2}
+	  		 		, 'RESION', #{gugun}, #{gugun}, #{dong}, #{parkingTel}
+	  		 	    , REPLACE(NULLIF(#{minutePrice}, ''), ',', ''), REPLACE(NULLIF(#{dayPrice}, ''), ',', ''), REPLACE(NULLIF(#{parkingSpot}, ''), ',', ''),'USE_YN', #{useYn}
+	  		 	    , #{color}, #{userId}, NOW(), #{userId}, NOW()
+	  		 	    , #{pCompCode}, 0, #{detailInfo}, #{detailPrice}, #{parkingAreaCode}
+	  		 	    , 'USE_YN', 'Y'
+	  		 	    , #{pGovCode}, #{pGovAccountCode}, #{minuteStd}, REPLACE(NULLIF(#{turningMin}, ''), ',', ''), REPLACE(NULLIF(#{nStdPrice}, ''), ',', '')
+					, REPLACE(NULLIF(#{hStdPrice}, ''), ',', ''), REPLACE(NULLIF(#{n10mPrice}, ''), ',', ''), REPLACE(NULLIF(#{h10mPrice}, ''), ',', ''), REPLACE(NULLIF(#{n20mPrice}, ''), ',', ''), REPLACE(NULLIF(#{h20mPrice}, ''), ',', '')
+					, REPLACE(NULLIF(#{nDayPrice}, ''), ',', ''), REPLACE(NULLIF(#{hDayPrice}, ''), ',', '')
+	  		 	    , CONCAT(#{nStTimeH} , #{nStTimeM})
+	  		 	    , CONCAT(#{nFnTimeH} , #{nFnTimeM})
+	  		 	    , CONCAT(#{hStTimeH} , #{hStTimeM})
+	  		 	    , CONCAT(#{hFnTimeH} , #{hFnTimeM})
+	  		 	    , REPLACE(NULLIF(#{freeMin}, ''), ',', ''), 'PRICE_CHG_GUBN', #{priceChgGubn}, #{fontColor}, 'USE_YN'
+	  		 	    , #{spPeriodYn}, 'API_VER_GUBN', #{apiVerGubn}, 'USE_YN', #{hUseGubn}
+	  		 	    , #{apiUrl}
+					, REPLACE(NULLIF(#{parkingLatitude}, ''), ',', '')
+					, REPLACE(NULLIF(#{parkingLongitude}, ''), ',', '')
+	  		 	    <if test='spPeriodYn eq "Y"'>
+	  		 	    , REPLACE(#{spStDate}, '-', ''), REPLACE(#{spFnDate}, '-', '')
+	  		 	    , CONCAT(#{spNStTimeH} , #{spNStTimeM})
+	  		 	    , CONCAT(#{spNFnTimeH} , #{spNFnTimeM})
+	  		 	    , CONCAT(#{spHStTimeH} , #{spHStTimeM})
+	  		 	    , CONCAT(#{spHFnTimeH} , #{spHFnTimeM})
+	  		 	    </if>
+	  		 	    , 'MAP_MARK_GUBN', #{mapMarkGubn}
+		)
+	</insert>
+	
+	<!--감면정보 강제 입력 (스마트 주차 시스템 10%) -->
+	<insert id="insert_parkingReduction">
+		INSERT INTO T_PARKING_REDUCTION (
+		       PARKING_NO, REDUCTION_CODE, REG_ID, REG_DT, REDUCTION_GUBN_PARENT
+		     , REDUCTION_GUBN, REDUCTION_NAME, REDUCTION_RATE, REDUCTION_ORDER, FREE_HOUR
+		     , ADDR_CHK_YN_PARENT, ADDR_CHK_YN, APPLY_CAR_KIND_PARENT, APPLY_CAR_KIND
+             , APPLY_RIDING_CNT_PARENT, APPLY_RIDING_CNT, REDUCTION_GROUP_ORDER
+		) SELECT #{newParkingNo}, REDUCTION_CODE, #{userId}, NOW(), REDUCTION_GUBN_PARENT
+				, REDUCTION_GUBN, REDUCTION_NAME, REDUCTION_RATE, REDUCTION_ORDER, FREE_HOUR
+				, ADDR_CHK_YN_PARENT, ADDR_CHK_YN, APPLY_CAR_KIND_PARENT, APPLY_CAR_KIND
+				, APPLY_RIDING_CNT_PARENT, APPLY_RIDING_CNT, REDUCTION_GROUP_ORDER
+			 FROM T_REDUCTION_INFO
+			WHERE REDUCTION_CODE = 'A14'
+	</insert>
+
+	<update id="update_parkingInfo">
+		UPDATE T_PARKING_INFO
+		   SET PARKING_NAME = #{parkingName}
+		     , PARKING_POST = #{parkingPost}
+		     , PARKING_ADDR = #{parkingAddr}
+		     , PARKING_ADDR2 = #{parkingAddr2}
+		     , GUGUN = #{gugun}
+		     , DONG = #{dong}
+		     <if test="parkingTel neq null and parkingTel neq ''">
+		     , PARKING_TEL = #{parkingTel}
+		     </if>
+		     , MINUTE_STD = #{minuteStd}
+		     , MINUTE_PRICE = REPLACE(NULLIF(#{minutePrice}, ''), ',', '')
+		     , DAY_PRICE = REPLACE(NULLIF(#{dayPrice}, ''), ',', '')
+		     , PARKING_SPOT = REPLACE(NULLIF(#{parkingSpot}, ''), ',', '')
+		     , DETAIL_INFO = #{detailInfo}
+		     , PARKING_PRICE_DETAIL = #{detailPrice}
+		     , USE_YN = #{useYn}
+		     , COLOR = #{color}
+		     , P_COMP_CODE = #{pCompCode}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		     , PARKING_AREA_CODE = #{parkingAreaCode}
+		     , P_GOV_CODE = #{pGovCode}
+		     , P_GOV_ACCOUNT_CODE = #{pGovAccountCode}
+		     , FREE_MIN =  REPLACE(NULLIF(#{freeMin}, ''), ',', '')
+		     , TURNING_MIN = REPLACE(NULLIF(#{turningMin}, ''), ',', '')
+		     , N_STD_PRICE = REPLACE(NULLIF(#{nStdPrice}, ''), ',', '')
+	   		 , H_STD_PRICE = REPLACE(NULLIF(#{hStdPrice}, ''), ',', '')
+	   		 , N_10M_PRICE = REPLACE(NULLIF(#{n10mPrice}, ''), ',', '')
+	   		 , H_10M_PRICE = REPLACE(NULLIF(#{h10mPrice}, ''), ',', '')
+	   		 , N_20M_PRICE = REPLACE(NULLIF(#{n20mPrice}, ''), ',', '')
+	   		 , H_20M_PRICE = REPLACE(NULLIF(#{h20mPrice}, ''), ',', '')
+	   		 , N_DAY_PRICE = REPLACE(NULLIF(#{nDayPrice}, ''), ',', '')
+	   		 , H_DAY_PRICE = REPLACE(NULLIF(#{hDayPrice}, ''), ',', '')
+	   		 , N_ST_TIME =  CONCAT(#{nStTimeH} , #{nStTimeM})
+	   		 , N_FN_TIME =  CONCAT(#{nFnTimeH} , #{nFnTimeM})
+	   		 , H_ST_TIME =  CONCAT(#{hStTimeH} , #{hStTimeM})
+	   		 , H_FN_TIME =  CONCAT(#{hFnTimeH} , #{hFnTimeM})
+			 , PRICE_CHG_GUBN = #{priceChgGubn}
+			 , FONT_COLOR = #{fontColor}
+			 , SP_PERIOD_YN = #{spPeriodYn}
+			 , API_VER_GUBN = #{apiVerGubn}
+			 , H_USE_GUBN = #{hUseGubn}
+			 , API_URL = #{apiUrl}
+			 , PARKING_LATITUDE = REPLACE(NULLIF(#{parkingLatitude}, ''), ',', '')
+			 , PARKING_LONGITUDE = REPLACE(NULLIF(#{parkingLongitude}, ''), ',', '')
+			 <if test='spPeriodYn eq "Y"'>
+			 , SP_ST_DATE = REPLACE(#{spStDate}, '-', '')
+			 , SP_FN_DATE = REPLACE(#{spFnDate}, '-', '')
+			 , SP_N_ST_TIME =  CONCAT(#{spNStTimeH} , #{spNStTimeM})
+			 , SP_N_FN_TIME =  CONCAT(#{spNFnTimeH} , #{spNFnTimeM})
+			 , SP_H_ST_TIME =  CONCAT(#{spHStTimeH} , #{spHStTimeM})
+			 , SP_H_FN_TIME =  CONCAT(#{spHFnTimeH} , #{spHFnTimeM})
+			 </if>
+			 , MAP_MARK_GUBN = #{mapMarkGubn}
+		 WHERE PARKING_NO = #{hParkingNo}
+	</update>
+	
+	<update id="update_parkingSpotInfo">
+		UPDATE T_PARKING_INFO
+		   SET PARKING_SPOT_NOW = #{parkingSpotNow}
+		 WHERE PARKING_NO = #{hParkingNo}
+	</update>
+		
+	<delete id="delete_parkingInfo">
+		DELETE FROM T_PARKING_INFO
+		 WHERE PARKING_NO = #{hParkingNo}
+	</delete>
+	
+	<delete id="delete_parkingReduction">
+		DELETE FROM T_PARKING_REDUCTION
+		 WHERE PARKING_NO = #{hParkingNo}
+	</delete>
+	
+	<insert id="insert_weekday">
+		INSERT INTO T_PARKING_WEEKDAY (
+			   PARKING_NO, WEEK_DAY, WEEK_DAY_PARENT, REG_ID, REG_DT
+		) VALUES (
+	 		   #{parkingNo}, #{weekDay}, 'WEEKDAY', #{userId}, NOW()
+		)
+	</insert>
+	
+	<delete id="delete_weekday">
+		DELETE FROM T_PARKING_WEEKDAY
+		 WHERE PARKING_NO = #{parkingNo}
+	</delete>
+	
+</mapper>

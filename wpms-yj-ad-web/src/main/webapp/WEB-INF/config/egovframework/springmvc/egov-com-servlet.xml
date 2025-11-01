@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+
+    <!-- http://www.egovframe.go.kr/wiki/doku.php?id=egovframework:rte:ptl:dispatcherservlet -->
+
+    <!-- 패키지 내 Controller, Service, Repository 클래스의 auto detect를 위한 mvc 설정 -->
+    <context:component-scan base-package="kr.yeongju.its.ad">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Service"/>
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Repository"/>
+    </context:component-scan>
+
+    <!-- 서블릿컨네이너상의 exception에 대한 오류 페이지를 연결하는 mvc 설정 -->
+    <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+        <property name="defaultErrorView" value="cmm/error/egovError"/>
+        <property name="exceptionMappings">
+            <props>
+                <prop key="org.springframework.dao.DataAccessException">cmm/error/dataAccessFailure</prop>
+                <prop key="org.springframework.transaction.TransactionException">cmm/error/transactionFailure</prop>
+                <prop key="egovframework.rte.fdl.cmmn.exception.EgovBizException">cmm/error/egovError</prop>
+                <prop key="org.springframework.security.AccessDeniedException">cmm/error/accessDenied</prop>
+            </props>
+        </property>
+    </bean>
+
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/**/*.do"/>
+            <bean class="kr.yeongju.its.ad.core.interceptor.SecureInterceptor" />
+        </mvc:interceptor>
+        <mvc:interceptor>
+            <mvc:mapping path="/**/*.do"/>
+            
+            <mvc:exclude-mapping path="/dashboard.do" />
+            <mvc:exclude-mapping path="/login.do" />
+            <mvc:exclude-mapping path="/logout.do" />
+            <mvc:exclude-mapping path="/403.do" />
+            <mvc:exclude-mapping path="/404.do" />
+            <mvc:exclude-mapping path="/500.do" />
+            <mvc:exclude-mapping path="/api/*" />
+            <mvc:exclude-mapping path="/ajax/*" />
+            <mvc:exclude-mapping path="/_key/*" />
+            <mvc:exclude-mapping path="/_tst/*" />
+
+            <bean class="kr.yeongju.its.ad.core.interceptor.SiteInterceptor" >
+				<property name="attributeName" value="user_id" />
+				<property name="redirectUrl" value="/login.do?error=1" />
+			</bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
+
+    <!-- 화면처리용 JSP 파일명의  prefix, suffix 처리에 대한 mvc 설정  -->
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver"
+          p:order="1"
+          p:viewClass="org.springframework.web.servlet.view.JstlView"
+          p:prefix="/WEB-INF/jsp/"
+          p:suffix=".jsp"
+          p:exposeContextBeansAsAttributes="true" />
+
+    <!--http://www.egovframe.go.kr/wiki/doku.php?id=egovframework:rte2:ptl:spring_mvc_tag_configuration -->
+    <!-- Annotation 을 사용하지 않는 경우에 대한 MVC 처리 설정 -->
+    <!-- 정적 페이지 설정시 사용됨, path를 view로 바로 연결 -->
+    <!--<mvc:view-controller path="/cmmn/validator.do" view-name="cmmn/validator"/>-->
+
+    <bean class="org.springframework.format.support.FormattingConversionServiceFactoryBean" id="conversionService"/>
+
+    <!-- ConversionService, @RequestParam, @Valid, @DateTimeFormat, JSON 처리등 -->
+    <mvc:annotation-driven conversion-service="conversionService" ignore-default-model-on-redirect="true" />
+    
+    <!-- upload files -->
+    <mvc:resources mapping="/uploads/**" location="/uploads/" cache-period="31536000"/>
+    <mvc:resources mapping="/images/**" location="/images/" cache-period="31536000"/>
+
+    <!-- 처리할 수 없는 요청(.css, .js, .jpg)은 컨테이너에게 위임한다. mvc:resources로 변경 가능 -->
+    <mvc:default-servlet-handler/>
+
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"/>
+</beans>

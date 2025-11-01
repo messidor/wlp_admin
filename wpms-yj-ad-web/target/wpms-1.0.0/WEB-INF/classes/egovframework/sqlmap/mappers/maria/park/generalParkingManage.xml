@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.generalParkingManage">
+	
+	<select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT GENERAL_PARKING_NO VALUE, PARKING_NAME TEXT
+	      FROM T_GENERAL_PARKING_INFO
+         WHERE USE_YN = 'Y'
+		   AND P_GOV_CODE = #{kParkingGovCode}
+		 ORDER BY PARKING_NAME
+	</select>
+	
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT PI.GENERAL_PARKING_NO, PI.PARKING_ID, PI.PARKING_NAME
+			 , SCC1.CODE_NAME1 GUGUN_NAME
+			 , IF(PI.PARKING_POST IS NOT NULL, CONCAT('[', PI.PARKING_POST, '] ', PI.PARKING_ADDR, ' ', PI.PARKING_ADDR2), CONCAT(PI.PARKING_ADDR, ' ', PI.PARKING_ADDR2)) AS ADDRESS
+			 , PI.PARKING_TEL, PGI.P_GOV_NAME, PI.PARKING_SPOT
+			 , UI.USER_NAME AS MOD_NAME
+			 , SCC2.CODE_NAME1 USE_YN_NAME
+			 , PI.MOD_DT
+		  FROM T_GENERAL_PARKING_INFO PI
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+		    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE SCC1
+		    ON PI.GUGUN_PARENT = SCC1.PARENT_CODE_ID
+		   AND PI.GUGUN = SCC1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE SCC2
+		    ON PI.USE_YN_PARENT = SCC2.PARENT_CODE_ID
+		   AND PI.USE_YN = SCC2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON PI.MOD_ID = UI.USER_ID
+		 WHERE 1=1
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND PI.GENERAL_PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kLocalGubn neq null and kLocalGubn neq ''" >
+			AND PI.GUGUN = #{kLocalGubn}
+		</if>
+
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND PI.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+
+		<if test="kUseYn neq null and kUseYn neq ''" >
+			AND PI.USE_YN = #{kUseYn}
+		</if>
+		 ORDER BY PI.PARKING_NAME ASC
+	</select>
+
+	<select id="select_parking_comp_code" parameterType="commonMap" resultType="commonMap">
+		SELECT P_COMP_CODE VALUE, P_COMP_NAME TEXT
+		  FROM T_PARKING_COMP_INFO
+		 WHERE USE_YN = 'Y'
+		 ORDER BY P_COMP_CODE
+	</select>
+
+	<select id="select_parking_gov_code" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_CODE VALUE, P_GOV_NAME TEXT
+		  FROM T_PARKING_GOV_INFO
+		 ORDER BY P_GOV_CODE
+	</select>
+</mapper>

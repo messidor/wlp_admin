@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.genaralParkingManagePopup">
+
+	
+	<select id="select_detail" parameterType="commonMap" resultType="commonMap">
+		SELECT GENERAL_PARKING_NO, PARKING_ID, PARKING_NAME, PARKING_POST, PARKING_ADDR
+			 , PARKING_ADDR2, PARKING_ROAD_ADDR, PARKING_ROAD_ADDR2, GUGUN_PARENT, GUGUN
+			 , DONG_PARENT, DONG, PARKING_LATITUDE, PARKING_LONGITUDE, PARKING_GRADE
+			 , PARKING_TEL, PARKING_SPOT, DP_PARKING_SPOT, STD_PRICE, TEN_M_PRICE
+			 , MANAGE_INFO, P_GOV_CODE, USE_YN, MAP_MARK_GUBN
+		  FROM T_GENERAL_PARKING_INFO 
+		 WHERE GENERAL_PARKING_NO = #{hGeneralParkingNo}
+	</select>
+	
+	<select id="select_dongList" parameterType="commonMap" resultType="commonMap">
+		SELECT CODE_ID AS VALUE, CODE_NAME1 AS TEXT 
+          FROM T_SYS_COMCODE
+         WHERE USE_YN = 'Y'
+		<if test="gugun neq null and gugun neq ''" >
+			<![CDATA[AND PARENT_CODE_ID = #{gugun}]]>
+		</if>
+		 ORDER BY CODE_ORDER
+	</select>
+
+	<select id="select_parkGovList" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_CODE AS VALUE, P_GOV_NAME AS TEXT
+		  FROM T_PARKING_GOV_INFO
+		 WHERE USE_YN = 'Y'
+		 ORDER BY P_GOV_CODE
+	</select>
+		
+	<select id="select_parkingId" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) CNT
+		  FROM T_GENERAL_PARKING_INFO
+		 WHERE PARKING_ID = #{parkingId}
+	</select>
+	
+	<select id="select_parkingOverlapName" parameterType="commonMap" resultType="commonMap">
+		SELECT A.PARKING_ID, A.PARKING_NAME, B.P_GOV_NAME
+		  FROM T_GENERAL_PARKING_INFO A
+		  LEFT OUTER JOIN T_PARKING_GOV_INFO B
+		    ON A.P_GOV_CODE = B.P_GOV_CODE
+		 WHERE A.PARKING_ID = #{parkingId}
+	</select>
+	
+	<insert id="insert_generalParkingInfo">
+		INSERT INTO T_GENERAL_PARKING_INFO (
+			   GENERAL_PARKING_NO, PARKING_ID, PARKING_NAME, PARKING_POST, PARKING_ADDR
+			 , PARKING_ADDR2, PARKING_ROAD_ADDR, PARKING_ROAD_ADDR2, GUGUN_PARENT, GUGUN
+			 , DONG_PARENT, DONG, PARKING_LATITUDE, PARKING_LONGITUDE, PARKING_GRADE
+			 , PARKING_TEL, PARKING_SPOT, DP_PARKING_SPOT, STD_PRICE, TEN_M_PRICE
+			 , MANAGE_INFO, P_GOV_CODE, MAP_MARK_GUBN_PARENT, MAP_MARK_GUBN, USE_YN_PARENT
+			 , USE_YN, REG_ID, REG_DT, MOD_ID, MOD_DT
+		) VALUES (
+			   FN_MAKE_KEY('GENERAL_PARKING_NO'), #{parkingId}, #{parkingName}, #{parkingPost}, #{parkingAddr}
+			 , #{parkingAddr2}, #{parkingRoadAddr}, #{parkingRoadAddr2}, 'RESION', #{gugun}
+			 , #{gugun}, #{dong}, REPLACE(NULLIF(#{parkingLatitude}, ''), ',', ''), REPLACE(NULLIF(#{parkingLongitude}, ''), ',', ''), #{parkingGrade}
+			 , #{parkingTel}, REPLACE(NULLIF(#{parkingSpot}, ''), ',', ''), REPLACE(NULLIF(#{dpParkingSpot}, ''), ',', ''), REPLACE(NULLIF(#{stdPrice}, ''), ',', ''), REPLACE(NULLIF(#{tenMPrice}, ''), ',', '')
+			 , #{manageInfo}, #{pGovCode}, 'MAP_MARK_GUBN', #{mapMarkGubn}, 'USE_YN'
+			 , #{useYn}, #{userId}, NOW(), #{userId}, NOW()
+		)
+	</insert>
+	
+
+	<update id="update_generalParkingInfo">
+		UPDATE T_GENERAL_PARKING_INFO
+		   SET PARKING_NAME = #{parkingName}
+		   	 , PARKING_POST = #{parkingPost}
+		   	 , PARKING_ADDR = #{parkingAddr}
+		   	 , PARKING_ADDR2 = #{parkingAddr2}
+		   	 , PARKING_ROAD_ADDR = #{parkingRoadAddr}
+		   	 , PARKING_ROAD_ADDR2 = #{parkingRoadAddr2}
+		   	 , GUGUN = #{gugun}
+		   	 , DONG_PARENT = #{gugun}
+		   	 , DONG = #{dong}
+		   	 , PARKING_LATITUDE = REPLACE(NULLIF(#{parkingLatitude}, ''), ',', '')
+		   	 , PARKING_LONGITUDE = REPLACE(NULLIF(#{parkingLongitude}, ''), ',', '')
+		   	 , PARKING_GRADE = #{parkingGrade}
+		   	 , PARKING_TEL = #{parkingTel}
+		   	 , PARKING_SPOT = REPLACE(NULLIF(#{parkingSpot}, ''), ',', '')
+		   	 , DP_PARKING_SPOT = REPLACE(NULLIF(#{dpParkingSpot}, ''), ',', '')
+		   	 , STD_PRICE = REPLACE(NULLIF(#{stdPrice}, ''), ',', '')
+		   	 , TEN_M_PRICE = REPLACE(NULLIF(#{tenMPrice}, ''), ',', '')
+		   	 , MANAGE_INFO = #{manageInfo}
+		   	 , P_GOV_CODE = #{pGovCode}
+		   	 , MAP_MARK_GUBN = #{mapMarkGubn}
+		   	 , USE_YN = #{useYn}
+		   	 , MOD_ID = #{userId}
+		   	 , MOD_DT = NOW()
+		 WHERE GENERAL_PARKING_NO = #{hGeneralParkingNo}
+	</update>
+	
+	<update id="update_parkingSpotInfo">
+		UPDATE T_GENERAL_PARKING_INFO
+		   SET PARKING_SPOT = #{parkingSpotNow}
+		 WHERE GENERAL_PARKING_NO = #{hGeneralParkingNo}
+	</update>
+		
+	<delete id="delete_generalParkingInfo">
+		DELETE FROM T_GENERAL_PARKING_INFO
+		 WHERE GENERAL_PARKING_NO = #{hGeneralParkingNo}
+	</delete>
+
+	
+</mapper>

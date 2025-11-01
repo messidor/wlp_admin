@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.select">
+	
+	<select id="select_memberInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT MI.MEMBER_NAME, MI.KAKAO_YN
+  			 , REPLACE(MI.MEMBER_PHONE, '-', '') AS MEMBER_PHONE
+		  FROM T_MEMBER_INFO MI
+		 WHERE MI.MEMBER_ID = #{memberId}
+	</select>
+	
+	<select id="select_couponMemberInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT COUPON_MEMBER_NAME, KAKAO_YN
+  			 , REPLACE(MEMBER_PHONE, '-', '') AS MEMBER_PHONE
+		  FROM T_COUPON_MEMBER_INFO MI
+		 WHERE COUPON_MEMBER_ID = #{couponMemberId}
+	</select>
+
+	<select id="select_parkingGovInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_CODE VALUE, P_GOV_NAME TEXT
+	      FROM T_PARKING_GOV_INFO A
+	     WHERE 1=1
+	       AND A.USE_YN = 'Y'
+		<if test="userParkingGov neq null and userParkingGov neq ''" >
+		   AND P_GOV_CODE = #{userParkingGov}
+		</if>
+	</select>
+
+    <select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+        SELECT A.PARKING_NO VALUE, A.PARKING_NAME TEXT
+          FROM T_PARKING_INFO A
+         INNER JOIN T_PARKING_GOV_INFO B
+            ON A.P_GOV_CODE = B.P_GOV_CODE
+         WHERE A.USE_YN = 'Y'
+           AND B.USE_YN = 'Y'
+        <if test="kParkingCompCode neq null and kParkingCompCode neq ''" >
+           AND A.P_COMP_CODE = #{kParkingCompCode}
+        </if>
+        <if test="userParkingGov neq null and userParkingGov neq ''" >
+           AND A.P_GOV_CODE = #{userParkingGov}
+        </if>
+         ORDER BY A.PARKING_NAME
+    </select>
+
+    <select id="select_parkingInfo2" parameterType="commonMap" resultType="commonMap">
+        SELECT A.PARKING_NO VALUE, A.PARKING_NAME TEXT
+          FROM T_PARKING_INFO A
+         INNER JOIN T_PARKING_GOV_INFO B
+            ON A.P_GOV_CODE = B.P_GOV_CODE
+         WHERE A.USE_YN = 'Y'
+           AND B.USE_YN = 'Y'
+        <if test="kParkingCompCode neq null and kParkingCompCode neq ''" >
+           AND A.P_COMP_CODE = #{kParkingCompCode}
+        </if>
+        <if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+           AND A.P_GOV_CODE = #{kParkingGovCode}
+        </if>
+        <if test="apiVerGubn neq null and apiVerGubn neq ''">
+           AND A.API_VER_GUBN = #{apiVerGubn}
+        </if>
+         ORDER BY A.PARKING_NAME
+    </select>
+    
+    <select id="select_parkingInfo3" parameterType="commonMap" resultType="commonMap">
+        SELECT A.PARKING_NO VALUE, A.PARKING_NAME TEXT
+          FROM T_PARKING_INFO A
+         INNER JOIN T_PARKING_GOV_INFO B
+            ON A.P_GOV_CODE = B.P_GOV_CODE
+         WHERE A.USE_YN = 'Y'
+           AND B.USE_YN = 'Y'
+           AND A.API_VER_GUBN = 2
+        <if test="kParkingCompCode neq null and kParkingCompCode neq ''" >
+           AND A.P_COMP_CODE = #{kParkingCompCode}
+        </if>
+        <if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+           AND A.P_GOV_CODE = #{kParkingGovCode}
+        </if>
+        <if test="userParkingNo neq null and userParkingNo neq ''" >
+		   AND A.PARKING_NO = #{userParkingNo}
+		</if>
+         ORDER BY A.PARKING_NAME
+    </select>
+	
+	<select id="select_parkingCompInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT P_COMP_CODE VALUE, P_COMP_NAME TEXT
+	      FROM T_PARKING_COMP_INFO A
+	     WHERE 1=1
+	       AND USE_YN = 'Y' 
+	</select>
+	
+	<select id="select_parkingGovAccountInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_ACCOUNT_CODE VALUE, P_GOV_ACCOUNT_NAME TEXT
+	      FROM T_PARKING_GOV_BANK_INFO A
+	     WHERE 1=1
+	       AND USE_YN = 'Y' 
+
+		<choose>
+			<when test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+				AND P_GOV_CODE = #{kParkingGovCode}
+			</when>
+			<when test="userParkingGov neq null and userParkingGov neq ''" >
+				AND P_GOV_CODE = #{userParkingGov}
+			</when>
+		</choose>
+		  ORDER BY P_GOV_ACCOUNT_CODE ASC
+	</select>
+	
+	<!-- 타지역 제외한 구군코드 SELECT -->
+	<select id="select_gugun" parameterType="commonMap" resultType="commonMap">
+		SELECT A.CODE_ID as VALUE
+		     , A.CODE_NAME1 as TEXT
+		  FROM T_SYS_COMCODE A
+		 WHERE A.PARENT_CODE_ID = 'RESION'
+		   AND A.USE_YN = 'Y'
+		   AND CODE_NAME2 = 'Y'
+		 ORDER BY CODE_ORDER
+	</select>
+</mapper>

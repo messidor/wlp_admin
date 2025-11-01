@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.unpaidCarManage">
+
+
+	<select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NO VALUE, PARKING_NAME TEXT
+	      FROM T_PARKING_INFO
+         WHERE 1=1
+		<if test="userParkingGov neq null and userParkingGov neq ''" >
+		   AND P_GOV_CODE = #{userParkingGov}
+		</if>
+	</select>
+	
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT PAY_STATUS_NAME, PARKING_NAME, IFNULL(MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME, MEMBER_PHONE
+		     , CAR_NO, P_ENT_DT, P_OUT_DT, PARKING_PRICE, IFNULL(CONFIRM_NAME, '탈퇴한 사용자') AS CONFIRM_NAME
+		     , CHARGE_NO, MEMBER_ID, PAYMENT, PAY_STATUS
+		     , ROW_NUMBER() OVER(ORDER BY T.P_ENT_DT DESC) AS NUM
+		  FROM (
+				SELECT 'N' AS PAY_STATUS
+				     , '미납' AS PAY_STATUS_NAME
+				     , C.PARKING_NAME
+				     , B.MEMBER_NAME
+				     , B.MEMBER_PHONE
+				     , A.CAR_NO
+				     , DATE_FORMAT(D.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+				     , DATE_FORMAT(D.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+				     , CONCAT(FORMAT(A.PARKING_PRICE, 0) , '원') AS PARKING_PRICE
+				     , A.CHARGE_NO
+				     , A.MEMBER_ID
+				     , '납부' AS PAYMENT
+				     , C.P_GOV_CODE
+				     , A.PARKING_NO
+				     , ' ' AS CONFIRM_NAME
+			      FROM T_PARKING_CHARGE A
+			      LEFT OUTER JOIN T_MEMBER_INFO B
+			        ON A.MEMBER_ID = B.MEMBER_ID
+			     INNER JOIN T_PARKING_INFO C
+			        ON A.PARKING_NO = C.PARKING_NO
+			     INNER JOIN T_PARKING_CAR_HISTORY D
+			        ON A.HISTORY_CODE = D.HISTORY_CODE
+			     WHERE A.PAY_GUBN = 'PG006'
+			     UNION
+				SELECT 'Y' AS PAY_STATUS
+				     , '완납' AS PAY_STATUS_NAME
+				     , PI.PARKING_NAME
+				     , MI.MEMBER_NAME
+				     , MI.MEMBER_PHONE
+				     , PC.CAR_NO
+				     , DATE_FORMAT(PCH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+				     , DATE_FORMAT(PCH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+				     , CONCAT(FORMAT(PC.PARKING_PRICE, 0) , '원') AS PARKING_PRICE
+				     , PC.CHARGE_NO
+				     , MI.MEMBER_ID
+				     , '' AS PAYMENT
+				     , PI.P_GOV_CODE
+				     , PC.PARKING_NO
+				     , CASE WHEN PP.CONFIRM_ID IS NULL THEN ' '
+	           		  		WHEN PP.CONFIRM_ID IN (SELECT USER_ID FROM T_USER_INFO) 
+			      				 THEN (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PP.CONFIRM_ID)
+	  		   			    ELSE (SELECT MEMBER_NAME FROM T_MEMBER_INFO WHERE MEMBER_ID = PP.CONFIRM_ID)
+	  		   			    END AS CONFIRM_NAME
+				  FROM T_PARKING_CHARGE PC
+				 INNER JOIN T_PARKING_PAY PP
+				    ON PC.PAY_CODE = PP.PAY_CODE
+				  LEFT OUTER JOIN T_MEMBER_INFO MI
+				    ON PC.MEMBER_ID = MI.MEMBER_ID
+				 INNER JOIN T_PARKING_INFO PI
+				    ON PC.PARKING_NO = PI.PARKING_NO
+				 INNER JOIN T_PARKING_CAR_HISTORY PCH
+				    ON PC.HISTORY_CODE = PCH.HISTORY_CODE
+				 WHERE PC.PAY_GUBN = 'PG001'
+				   AND PP.PAYMENT_GUBN = 'N'
+			 ) T
+		 WHERE 1=1
+	       
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		</if>  
+	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND T.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kCarNumber neq null and kCarNumber neq ''" >
+			AND T.CAR_NO LIKE '%${kCarNumber}%'
+		</if>
+		<if test="kMemberName neq null and kMemberName neq ''" >
+			AND T.MEMBER_NAME = #{kMemberName} 
+		</if>
+		<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+			AND T.MEMBER_PHONE = #{kMemberPhone} 
+		</if>
+		<if test="kPayStatus neq null and kPayStatus neq ''" >
+			AND T.PAY_STATUS = #{kPayStatus} 
+		</if>
+		
+		ORDER BY T.P_ENT_DT DESC
+		
+	</select>
+	
+	<select id="Select_PopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+		     , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+		     , B.MEMBER_PHONE
+		     , A.CAR_NO
+		     , DATE_FORMAT(D.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+		     , DATE_FORMAT(D.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+		     , CONCAT(FORMAT(A.PARKING_PRICE, 0) , '원') AS PARKING_PRICE
+		     , A.PARKING_PRICE AS PARKING_PRICE_STR
+		     , A.CHARGE_NO
+		     , A.MEMBER_ID
+		     , '납부' AS PAYMENT
+		     , PP.REMARK AS REQ_REASON
+		     , CONCAT(FORMAT(IFNULL(A.TOTAL_PARKING_PRICE, 0), 0) , '원') AS TOTAL_PARKING_FEE
+			 , CONCAT(FORMAT(IFNULL(A.DISCOUNT_FEE, 0) + IFNULL(A.DISCOUNT_PRICE, 0), 0) , '원') AS DISCOUNT_FEE
+			 , CONCAT(FORMAT(IFNULL(A.PRE_PAY_FEE, 0), 0) , '원') AS PRE_PAY_FEE
+	      FROM T_PARKING_CHARGE A
+	      LEFT OUTER JOIN T_MEMBER_INFO B
+	        ON A.MEMBER_ID = B.MEMBER_ID
+	     INNER JOIN T_PARKING_INFO C
+	        ON A.PARKING_NO = C.PARKING_NO
+	     INNER JOIN T_PARKING_CAR_HISTORY D
+	        ON A.HISTORY_CODE = D.HISTORY_CODE
+	      LEFT OUTER JOIN T_PARKING_PAY PP
+	        ON A.PAY_CODE = PP.PAY_CODE
+	     WHERE A.CHARGE_NO = #{kChargeNo}
+		
+	</select>
+	
+	<update id="Update_ParkingCharge">
+		UPDATE T_PARKING_CHARGE
+		   SET PAY_CODE = #{payCode}
+		   	 , PAY_GUBN = 'PG001'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE CHARGE_NO = #{kChargeNo}
+		   AND MEMBER_ID = #{kMemberId}
+	</update>
+	
+	<insert id="Insert_ParkingPay">
+		INSERT INTO T_PARKING_PAY (
+			   PAY_CODE, PAY_SEQ, PAY_DATE, PAY_PRICE
+			 , PC_GUBN_PARENT, PC_GUBN, CREDIT_ALIAS, CREDIT_NO
+			 , CREDIT_NO2, CREDIT_NO3, CREDIT_NO4
+			 , CANCEL_YN_PARENT, CANCEL_YN, CANCEL_REASON, CANCEL_REJECT
+			 , FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID
+			 , CONFIRM_DT, REG_ID, REG_DT, MOD_ID
+			 , MOD_DT, T_ID, PAYMENT_GUBN_PARENT, PAYMENT_GUBN
+			 , MANUAL_YN_PARENT, MANUAL_YN, REMARK
+			 ) VALUES (
+			   #{payCode}, '1', NOW(), #{parkingPriceStr}
+			 , 'PC_GUBN', 'P', NULL, NULL
+			 , NULL, NULL, NULL
+			 , 'CANCEL_YN', NULL, NULL, NULL
+			 , NULL, 'CONFIRM_YN', 'Y', #{userId}
+			 , NOW(), #{userId}, NOW(), #{userId}
+			 , NOW(), NULL, 'PAYMENT_GUBN', 'N'
+			 , 'MANUAL_YN', 'Y', #{reqReason}
+			 )
+	</insert>
+	
+	
+	<insert id="Insert_unpaidCreate">
+		INSERT INTO T_PARKING_CHARGE (
+			   CHARGE_NO, CAR_NO, MEMBER_ID, PARKING_NO, PARKING_PRICE
+			 , PAY_GUBN_PARENT, PAY_GUBN, REG_ID, REG_DT, MOD_ID
+			 , MOD_DT, PAY_CODE, HISTORY_CODE, N_CHARGE_NO, ENT_DT
+			 , OUT_DT, TOTAL_PARKING_MIN, TOTAL_PARKING_FEE, TOTAL_PARKING_PRICE, REDUCTION_CODE
+			 , REDUCTION_PRICE, PRE_PAY_FEE, DISCOUNT_FEE, PARKING_FEE, DISCOUNT_PRICE
+			 , CREATE_REMARK
+		)
+		SELECT #{newChargeNo}, CAR_NO, MEMBER_ID, PARKING_NO, #{payPrice}
+			 , 'PAY_GUBN', 'PG006', #{userId}, NOW(), #{userId}
+			 , NOW(), PAY_CODE, HISTORY_CODE, CHARGE_NO, ENT_DT
+			 , OUT_DT, TOTAL_PARKING_MIN, TOTAL_PARKING_FEE, TOTAL_PARKING_PRICE, REDUCTION_CODE
+			 , REDUCTION_PRICE, PRE_PAY_FEE, DISCOUNT_FEE, PARKING_FEE, DISCOUNT_PRICE
+			 , #{createRemark}
+		  FROM T_PARKING_CHARGE
+		 WHERE CHARGE_NO = #{chargeNo}
+		   AND CAR_NO = #{carNo}
+		   AND MEMBER_ID = #{memberId}
+		   AND PARKING_NO = #{parkingNo}
+	</insert>
+	
+	<select id="Select_MemberUnpaid" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) PAID_CNT
+		  FROM T_PARKING_CHARGE A
+  		 INNER JOIN T_PARKING_INFO B
+		    ON A.PARKING_NO = B.PARKING_NO
+		 INNER JOIN T_PARKING_CAR_HISTORY C
+		    ON A.HISTORY_CODE = C.HISTORY_CODE
+		 INNER JOIN T_PARKING_GOV_INFO D
+		    ON B.P_GOV_CODE = D.P_GOV_CODE
+		 WHERE A.MEMBER_ID = #{kMemberId}
+		   AND A.PAY_GUBN = 'PG006'
+	</select>
+	
+	<insert id="Update_MemberUnpaid">
+		UPDATE T_MEMBER_INFO
+		   SET UNPAID_YN = 'N'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()		     
+		 WHERE MEMBER_ID = #{kMemberId}
+	</insert>
+	
+	
+	<select id="Select_carModalList" parameterType="commonMap" resultType="commonMap">
+		SELECT C.PARKING_NAME
+		     , B.MEMBER_NAME
+		     , A.CAR_NO
+		     , DATE_FORMAT(D.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+		     , DATE_FORMAT(D.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+		     , A.CHARGE_NO
+		     , A.MEMBER_ID
+		     , C.P_GOV_CODE
+		     , A.PARKING_NO
+		     , G.P_GOV_NAME
+		     , A.PARKING_NO
+		     , CONCAT(FORMAT(A.PARKING_PRICE, 0) , '원') AS PARKING_PRICE
+	      FROM T_PARKING_CHARGE A
+	      LEFT OUTER JOIN T_MEMBER_INFO B
+	        ON A.MEMBER_ID = B.MEMBER_ID
+	     INNER JOIN T_PARKING_INFO C
+	        ON A.PARKING_NO = C.PARKING_NO
+	     INNER JOIN T_PARKING_CAR_HISTORY D
+	        ON A.HISTORY_CODE = D.HISTORY_CODE
+	     INNER JOIN T_PARKING_GOV_INFO G
+	        ON C.P_GOV_CODE = G.P_GOV_CODE
+	     WHERE D.P_ENT_DT IS NOT NULL
+		   AND D.P_OUT_DT IS NOT NULL
+		   AND A.CAR_NO = #{kCarNumber}
+		 ORDER BY D.P_ENT_DT DESC
+	</select>
+</mapper>

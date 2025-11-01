@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.chunk.chunkFile">
+	
+	<select id="select_allChunkedData" parameterType="commonMap" resultType="commonMap">
+	    SELECT CONTENTS
+	      FROM T_FILE_CHUNKED
+	     WHERE UUID = #{uuid}
+	     ORDER BY IDX ASC
+	</select>
+	
+	<insert id="insert_newChunkData">
+        INSERT INTO T_FILE_CHUNKED (UUID, IDX, CONTENTS) VALUES (
+            #{uuid},
+            #{idx},
+            #{contents}
+        )
+	</insert>
+	
+	<insert id="delete_chunkData">
+        DELETE FROM T_FILE_CHUNKED
+         WHERE UUID = #{uuid}
+    </insert>
+		
+</mapper>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.alarmSmsManage">
+	<select id="select_smsList" parameterType="commonMap" resultType="commonMap">
+		SELECT Z.*, C.CODE_NAME1 AS SEND_RESULT_NAME
+		  FROM (
+			  	SELECT A.SMS_CODE
+			         , A.RESULT_DT
+			         , A.MSG_TYPE
+			         , A.MEMBER_ID
+			         , A.REG_DT
+			         , CASE WHEN A.SEND_RESULT IS NULL THEN 'WAIT' ELSE A.SEND_RESULT END AS SEND_RESULT
+			         , A.RECV_NAME
+			         , A.RECV_PHONE
+			         , A.SEND_PHONE
+			         , B.CODE_NAME1 AS MSG_TYPE_NAME
+			         , A.MSG_CONTENTS
+			  	  FROM T_SMS_LOG A
+			  	  LEFT OUTER JOIN T_SYS_COMCODE B
+			  	    ON A.MSG_TYPE_PARENT = B.PARENT_CODE_ID
+		      	   AND A.MSG_TYPE = B.CODE_ID
+		     ) Z
+		  LEFT OUTER JOIN T_SYS_COMCODE C
+		    ON C.PARENT_CODE_ID = 'SEND_RESULT'
+		   AND Z.SEND_RESULT = C.CODE_ID
+		 WHERE 1=1
+	  	 <![CDATA[AND Z.REG_DT >= STR_TO_DATE(#{startDate}, '%Y%m%d')]]>
+	     <![CDATA[AND Z.REG_DT <= (STR_TO_DATE(#{endDate}, '%Y%m%d') + INTERVAL 1 DAY)]]>
+		 <if test="kRecvName neq null and kRecvName neq ''" >
+		   AND Z.RECV_NAME = #{kRecvName}
+		 </if>
+		 <if test="kMsgContents neq null and kMsgContents neq ''" >
+		   AND Z.MSG_CONTENTS LIKE '%${kMsgContents}%'
+		 </if>
+		 <if test="kSmsType neq null and kSmsType neq ''" >
+		   AND Z.MSG_TYPE = #{kSmsType}
+		 </if>
+		 <if test="kSendResult neq null and kSendResult neq ''" >
+		   AND Z.SEND_RESULT = #{kSendResult}
+		 </if>
+		 ORDER BY Z.REG_DT DESC
+	</select>
+</mapper>

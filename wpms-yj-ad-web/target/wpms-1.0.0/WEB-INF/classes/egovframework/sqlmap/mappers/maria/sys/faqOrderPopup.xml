@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.faqOrderPopup">
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT FAQ_CODE, FAQ_ORDER, FAQ_CONTENT
+		  FROM T_FAQ
+		 WHERE FAQ_GUBN = 'M'
+		 ORDER BY FAQ_ORDER ASC 
+	</select>
+	
+	<update id="update_faqOrder">
+		UPDATE T_FAQ
+		   SET FAQ_ORDER = #{grdFaqOrder}
+		 WHERE PARENT_FAQ_CODE = '*' 
+		   AND FAQ_CODE = #{grdFaqCode}
+	</update>
+</mapper>

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.couponRefundManage">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT ROW_NUMBER() OVER(ORDER BY ACR.REG_DT DESC) AS NUM
+			 , CP.PUBLISH_CODE, CP.COUPON_CODE, CP.PARKING_NO
+			 , CP.COUPON_AREA_CODE, CP.COUPON_MEMBER_ID, ACR.APP_REFUND_CODE
+			 , DATE_FORMAT(CP.REG_DT, '%Y-%m-%d %H:%i:%s') AS PURCHASE_REG_DT
+			 , DATE_FORMAT(ACR.REG_DT, '%Y-%m-%d %H:%i:%s') AS REFUND_REG_DT
+			 , CM.COUPON_MEMBER_NAME
+			 , CM.MEMBER_PHONE
+			 , G.P_GOV_NAME
+			 , P.PARKING_NAME
+			 , CAI.AREA_NAME
+			 , CI.COUPON_NAME
+			 , CP.COUPON_QTY
+			 , CP.PURCHASE_PRICE
+			 , CC2.CODE_NAME1 AS CONFIRM_YN_NAME
+			 , ACR.REFUND_REASON
+			 , UI.USER_NAME AS CONFIRM_NAME
+			 , DATE_FORMAT(ACR.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') AS CONFIRM_DT
+			 , ACR.CONFIRM_YN
+		  FROM T_COUPON_PURCHASE CP
+		 INNER JOIN T_APPLY_COUPON_REFUND ACR
+		    ON CP.PUBLISH_CODE = ACR.PUBLISH_CODE
+		 INNER JOIN T_PARKING_COUPON_INFO CI
+		    ON CP.COUPON_CODE = CI.COUPON_CODE
+		   AND CP.PARKING_NO = CI.PARKING_NO
+		 INNER JOIN T_PARKING_INFO P
+		    ON CI.PARKING_NO = P.PARKING_NO
+		 INNER JOIN T_PARKING_GOV_INFO G
+		    ON P.P_GOV_CODE = G.P_GOV_CODE
+		  LEFT OUTER JOIN T_COUPON_AREA_INFO CAI
+		    ON CP.COUPON_AREA_CODE = CAI.COUPON_AREA_CODE
+		   AND CP.PARKING_NO = CAI.PARKING_NO
+		   AND CP.COUPON_MEMBER_ID = CAI.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_COUPON_MEMBER_INFO CM
+		    ON CP.COUPON_MEMBER_ID = CM.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC2
+		    ON ACR.CONFIRM_YN_PARENT = CC2.PARENT_CODE_ID
+		   AND ACR.CONFIRM_YN = CC2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON ACR.CONFIRM_ID = UI.USER_ID
+		 WHERE 1=1
+<![CDATA[		   
+		   AND ACR.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')
+		   AND ACR.REG_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d')+ INTERVAL 1 DAY ]]>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND P.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+ 	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND CP.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kCouponMemberName neq null and kCouponMemberName neq ''" >
+			AND CM.COUPON_MEMBER_NAME = #{kCouponMemberName}
+		</if>
+		<if test="kConfirmYn neq null and kConfirmYn neq ''" >
+			AND ACR.CONFIRM_YN = #{kConfirmYn}
+		</if>
+		 ORDER BY ACR.REG_DT DESC
+	</select>
+	
+	<select id="Select_PopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT CP.PUBLISH_CODE, CP.COUPON_CODE, CP.PARKING_NO
+			 , DATE_FORMAT(CP.REG_DT, '%Y-%m-%d %H:%i:%s') AS PURCHASE_REG_DT
+			 , DATE_FORMAT(ACR.REG_DT, '%Y-%m-%d %H:%i:%s') AS REFUND_REG_DT
+			 , CM.COUPON_MEMBER_NAME
+			 , CM.MEMBER_PHONE
+			 , G.P_GOV_NAME
+			 , P.PARKING_NAME
+			 , CAI.AREA_NAME
+			 , CC1.CODE_NAME1 AS COUPON_GUBN_NAME
+			 , CI.COUPON_NAME
+			 , FORMAT(CP.COUPON_QTY, 0) AS COUPON_QTY
+			 , FORMAT(CP.PURCHASE_PRICE, 0) AS PURCHASE_PRICE
+			 , CP.PC_GUBN
+			 , CC2.CODE_NAME1 AS CONFIRM_YN_NAME
+			 , CM2.COUPON_MEMBER_NAME AS REFUND_NAME
+			 , DATE_FORMAT(ACR.REG_DT, '%Y-%m-%d %H:%i:%s') AS REFUND_DT
+			 , ACR.REFUND_REASON
+			 , ACR.REJECT_REASON
+			 , ACR.CONFIRM_YN
+			 , UI.USER_NAME AS CONFIRM_NAME
+			 , DATE_FORMAT(ACR.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') AS CONFIRM_DT
+		  FROM T_COUPON_PURCHASE CP
+		 INNER JOIN T_APPLY_COUPON_REFUND ACR
+		    ON CP.PUBLISH_CODE = ACR.PUBLISH_CODE
+		 INNER JOIN T_PARKING_COUPON_INFO CI
+		    ON CP.COUPON_CODE = CI.COUPON_CODE
+		   AND CP.PARKING_NO = CI.PARKING_NO
+		 INNER JOIN T_PARKING_INFO P
+		    ON CI.PARKING_NO = P.PARKING_NO
+		 INNER JOIN T_PARKING_GOV_INFO G
+		    ON P.P_GOV_CODE = G.P_GOV_CODE
+		 LEFT OUTER JOIN T_COUPON_AREA_INFO CAI
+		    ON CP.COUPON_AREA_CODE = CAI.COUPON_AREA_CODE
+		   AND CP.PARKING_NO = CAI.PARKING_NO
+		   AND CP.COUPON_MEMBER_ID = CAI.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_COUPON_MEMBER_INFO CM
+		    ON CP.COUPON_MEMBER_ID = CM.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC1
+		    ON CP.COUPON_USE_GUBN_PARENT = CC1.PARENT_CODE_ID
+		   AND CP.COUPON_USE_GUBN = CC1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC2
+		    ON ACR.CONFIRM_YN_PARENT = CC2.PARENT_CODE_ID
+		   AND ACR.CONFIRM_YN = CC2.CODE_ID
+		  LEFT OUTER JOIN T_COUPON_MEMBER_INFO CM2
+		    ON ACR.REG_ID = CM2.COUPON_MEMBER_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON ACR.CONFIRM_ID = UI.USER_ID
+		 WHERE CP.PUBLISH_CODE = #{hPublishCode}
+		   AND CP.COUPON_CODE = #{hCouponCode}
+		   AND CP.PARKING_NO = #{hParkingNo}
+		   AND CP.COUPON_AREA_CODE = #{hCouponAreaCode}
+		   AND CP.COUPON_MEMBER_ID = #{hCouponMemberId}
+		   AND ACR.APP_REFUND_CODE = #{hAppRefundCode}
+	</select>
+	
+	<update id="update_couponPurchase">
+		UPDATE T_COUPON_PURCHASE
+		   SET PC_GUBN = #{pcGubn}
+		   	 , MOD_ID = #{userId}
+		   	 , MOD_DT = NOW()
+		 WHERE PUBLISH_CODE = #{hPublishCode}
+		   AND COUPON_CODE = #{hCouponCode}
+		   AND PARKING_NO = #{hParkingNo}
+		   AND COUPON_AREA_CODE = #{hCouponAreaCode}
+		   AND COUPON_MEMBER_ID = #{hCouponMemberId}
+	</update>
+	
+	<update id="update_appCouponRefund">
+		UPDATE T_APPLY_COUPON_REFUND
+		   SET CONFIRM_YN = #{confirmYn}
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , REJECT_REASON = #{rejectReason}
+		     , MOD_ID = #{userId}
+		   	 , MOD_DT = NOW()
+		 WHERE APP_REFUND_CODE = #{hAppRefundCode}
+		   AND PUBLISH_CODE = #{hPublishCode}
+	</update>
+    
+    <select id="select_PayCancelInformation" parameterType="commonMap" resultType="commonMap">
+        SELECT A.T_ID, A.PURCHASE_PRICE, G.ONCE_MERCHANT_KEY, G.ONCE_MID, G.ONCE_MID_PW
+          FROM T_COUPON_PURCHASE A
+         INNER JOIN T_PARKING_INFO P 
+            ON A.PARKING_NO = P.PARKING_NO
+         INNER JOIN T_PARKING_GOV_BANK_INFO G
+            ON P.P_GOV_ACCOUNT_CODE = G.P_GOV_ACCOUNT_CODE
+         WHERE A.PUBLISH_CODE = #{hPublishCode}
+           AND A.COUPON_CODE = #{hCouponCode}
+           AND A.PARKING_NO = #{hParkingNo}
+           AND A.COUPON_AREA_CODE = #{hCouponAreaCode}
+           AND A.COUPON_MEMBER_ID = #{hCouponMemberId}
+    </select>
+</mapper>

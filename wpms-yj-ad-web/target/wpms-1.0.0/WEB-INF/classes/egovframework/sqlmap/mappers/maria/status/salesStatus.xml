@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.salesStatus">
+	
+	<select id="select_Parking" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NAME TEXT
+		     , PARKING_NO VALUE
+		  FROM T_PARKING_INFO
+		 WHERE 1=1
+		   AND USE_YN = 'Y'
+		<if test="parkingGovCode neq null and parkingGovCode neq ''" >
+		   AND P_GOV_CODE = #{parkingGovCode}
+		</if>
+	</select>
+	
+	<select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+	    SELECT A.PARKING_NO, A.PARKING_NAME, CONCAT(A.PARKING_ADDR,' ',A.PARKING_ADDR2) PARKING_ADDR, B.P_GOV_NAME, C.P_COMP_NAME
+  		  FROM T_PARKING_INFO A
+  		 INNER JOIN T_PARKING_GOV_INFO B
+  		    ON A.P_GOV_CODE = B.P_GOV_CODE
+  		 INNER JOIN T_PARKING_COMP_INFO C
+  		    ON A.P_COMP_CODE = C.P_COMP_CODE
+  		 WHERE 1=1
+  		   AND A.USE_YN = 'Y'
+  		   AND B.USE_YN = 'Y'
+  		   AND C.USE_YN = 'Y'
+  		<if test="kParkingNo neq null and kParkingNo neq ''" >
+		   AND A.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND A.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		<if test="kParkingCompCode neq null and kParkingCompCode neq ''" >
+		   AND A.P_COMP_CODE = #{kParkingCompCode}
+		</if>
+		 ORDER BY A.PARKING_NAME ASC
+	</select>
+	
+	<select id="select_salesInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT CONCAT(PAY_YEAR,'년') PAY_YEAR, CONCAT(CAST(PAY_MONTH AS UNSIGNED),'월') PAY_MONTH, CONCAT(FORMAT(COUNT(*), 0),'건') PAY_CNT
+             , CONCAT(FORMAT(SUM(PAY_PRICE), 0),'원') PAY_PRICE
+          FROM (
+          		SELECT A.PAY_CODE, B.PARKING_PRICE PAY_PRICE
+          		     , DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR, DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+          		  FROM T_PARKING_PAY A
+          		 INNER JOIN T_PARKING_CHARGE B
+          		    ON A.PAY_CODE = B.PAY_CODE
+          		 WHERE B.PARKING_NO = #{hParkingNo}
+          		   AND A.PAY_DATE LIKE '${kUseYear}%'
+				<if test="kUseMonth neq null and kUseMonth neq ''" >
+					AND A.PAY_DATE LIKE '${kUseMonth}%'
+				</if>
+          		   AND NOT EXISTS (
+          		 		SELECT 1
+          		 		  FROM (
+           		 		  		 SELECT PAY_CODE, COUNT(*)
+         					       FROM T_PARKING_PAY
+         					      WHERE 1=1
+         					        AND PAY_DATE LIKE '${kUseYear}%'
+								<if test="kUseMonth neq null and kUseMonth neq ''" >
+									AND PAY_DATE LIKE '${kUseMonth}%'
+								</if>
+         					      GROUP BY PAY_CODE
+         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+          		 		     ) Q
+          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+          		     ) 
+             ) T
+         GROUP BY PAY_YEAR, PAY_MONTH
+         ORDER BY PAY_YEAR DESC, PAY_MONTH DESC
+	</select>
+</mapper>

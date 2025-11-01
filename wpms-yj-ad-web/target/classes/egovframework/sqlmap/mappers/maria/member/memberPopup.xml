@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.memberPopup">
+
+	<select id="select_MemberName" parameterType="commonMap"	resultType="commonMap">
+			SELECT A.MEMBER_NAME, A.MEMBER_PHONE, A.MEMBER_EMAIL, B.CODE_NAME1 MEMBER_GUBN_NAME
+				 , A.MEMBER_ID,A.MEMBER_PWD, A.MEMBER_GUBN
+				 , A.ZIP_CODE, A.ADDR_CODE1, A.ADDR_CODE2, C.CODE_NAME1 AS GUGUN
+			  FROM T_MEMBER_INFO A
+			  LEFT OUTER JOIN T_SYS_COMCODE B
+			    ON A.MEMBER_GUBN_PARENT = B.PARENT_CODE_ID
+			   AND A.MEMBER_GUBN = B.CODE_ID
+			  LEFT OUTER JOIN T_SYS_COMCODE C
+			    ON A.GUGUN_PARENT = C.PARENT_CODE_ID
+			   AND A.GUGUN = C.CODE_ID
+			 WHERE A.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<!-- // 20240710 :: 입차 상태인 차량은 삭제 불가능하도록 처리(IS_CAR_PARKING 추가) -->
+	<select id="select_carInfo" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.CAR_NO
+		     , A.CAR_ALIAS
+		     , CONCAT(F.FILE_PATH , F.FILE_NAME , '.' , F.FILE_EXT) AS FILE_NAME
+		     , CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS NAME
+		     , CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS DISP_FILE_NAME
+		     , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+		     , IFNULL(A.FILE_REL_KEY, '') AS FILE_REL_KEY
+		     , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+		     , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+		     , '삭제' AS DELETE_BTN
+		     , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+		     , C2.CODE_NAME1 AS LOW_PLT_GUBN
+		     , CASE WHEN CS.INOUT_STATUS = 'IN' THEN 'Y' ELSE 'N' END AS IS_CAR_PARKING
+		  FROM T_CAR_INFO A
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+		  LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+		    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+		   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C2
+		    ON A.LOW_PLT_GUBN_PARENT = C2.PARENT_CODE_ID
+		   AND A.LOW_PLT_GUBN = C2.CODE_ID
+		 INNER JOIN T_CAR_STATUS CS
+		    ON A.CAR_NO = CS.CAR_NO
+		   AND A.MEMBER_ID = CS.MEMBER_ID
+		 WHERE A.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<select id="select_creditInfo" parameterType="commonMap"	resultType="commonMap">
+			SELECT B.CODE_NAME1 CREDIT_COMP, A.CREDIT_NO, A.CREDIT_NO2, A.CREDIT_NO3, A.CREDIT_NO4
+				 , A.CREDIT_EXP_DATE
+			     , A.REP_YN, A.AUTO_PAY_YN
+  			  FROM T_MEMBER_CREDIT A
+  			  LEFT OUTER JOIN T_SYS_COMCODE B
+  			    ON A.CREDIT_COMP_PARENT = B.PARENT_CODE_ID
+  			   AND A.CREDIT_COMP = B.CODE_ID
+			 WHERE A.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<select id="select_MemberReduction" parameterType="commonMap"	resultType="commonMap">
+			SELECT A.REDUCTION_CODE, A.REDUCTION_NAME
+				 , DATE_FORMAT(B.RED_EXP_DATE, '%Y-%m-%d') RED_EXP_DATE
+				 , DATE_FORMAT(B.CONFIRM_DT,'%Y-%m-%d %H:%i:%s') CONFIRM_DT
+			     , CONCAT(F.FILE_PATH , F.FILE_NAME , '.' , F.FILE_EXT) AS FILE_NAME
+			     , CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS NAME
+			     , CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS DISP_FILE_NAME
+                 , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+			     , CONCAT(A.REDUCTION_RATE, '%') AS REDUCTION_RATE
+                 , IFNULL(B.FILE_REL_KEY, '') AS FILE_REL_KEY
+                 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+                 , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+                 , IF(A.REDUCTION_CODE = 'A14', '', '첨부파일') AS FILE_LINK
+                 , IF(A.REDUCTION_CODE = 'A14', '', '삭제') AS DELETE_BTN
+                 , '' AS STATE_COL
+	 	     	 , B.INPUT_GUBN
+	 	     	 , C1.CODE_NAME1 AS CONFIRM_YN_NAME
+			  FROM T_REDUCTION_INFO A
+			 INNER JOIN T_MEMBER_REDUCTION B
+			    ON A.REDUCTION_CODE = B.REDUCTION_CODE
+			  LEFT OUTER JOIN T_FILE_RELATION R
+			    ON B.FILE_REL_KEY = R.FILE_REL_KEY
+			  LEFT OUTER JOIN T_FILE_INFO F
+			    ON R.FILE_KEY = F.FILE_KEY
+			  LEFT OUTER JOIN T_SYS_COMCODE C1
+			    ON B.INPUT_GUBN_PARENT = C1.PARENT_CODE_ID
+			   AND B.INPUT_GUBN = C1.CODE_ID
+			 WHERE A.REDUCTION_GUBN IN ('ALL', 'MEMBER')
+			   AND B.MEMBER_ID = #{hMemberId}
+			   AND B.CONFIRM_YN = 'Y'
+			   AND A.USE_YN = 'Y'
+	</select>
+	
+	<select id="select_CarReduction" parameterType="commonMap"	resultType="commonMap">
+			SELECT A.REDUCTION_CODE, A.REDUCTION_NAME, B.CAR_NO, B.RED_EXP_DATE, DATE_FORMAT(B.CONFIRM_DT,'%Y-%m-%d %H:%i:%s') CONFIRM_DT
+			     , CONCAT(F.FILE_PATH , F.FILE_NAME , '.' , F.FILE_EXT) AS FILE_NAME
+			     , CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS NAME
+			     , CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS DISP_FILE_NAME 
+			     , F.FILE_EXT
+			     , CONCAT(A.REDUCTION_RATE, '%') AS REDUCTION_RATE
+			  FROM T_REDUCTION_INFO A
+			 INNER JOIN T_CAR_REDUCTION B
+			    ON A.REDUCTION_CODE = B.REDUCTION_CODE 
+			  LEFT OUTER JOIN T_FILE_RELATION R
+			    ON B.FILE_REL_KEY = R.FILE_REL_KEY
+			  LEFT OUTER JOIN T_FILE_INFO F
+			    ON R.FILE_KEY = F.FILE_KEY
+			 WHERE A.REDUCTION_GUBN IN ('ALL', 'CAR')
+               AND B.MEMBER_ID = #{hMemberId}
+			   AND B.USE_YN = 'Y'
+	</select>
+
+	<select id="select_CarReductionGrid" parameterType="commonMap"	resultType="commonMap">
+			SELECT A.REDUCTION_CODE, A.REDUCTION_NAME, B.CAR_NO, B.RED_EXP_DATE, DATE_FORMAT(B.CONFIRM_DT,'%Y-%m-%d %H:%i:%s') CONFIRM_DT
+			     , CONCAT(A.REDUCTION_RATE, '%') AS REDUCTION_RATE
+			  FROM T_REDUCTION_INFO A
+			 INNER JOIN T_CAR_REDUCTION B
+			    ON A.REDUCTION_CODE = B.REDUCTION_CODE
+			 WHERE A.REDUCTION_GUBN IN ('ALL', 'CAR')
+               AND B.MEMBER_ID = #{hMemberId}
+			   AND B.USE_YN = 'Y'
+             GROUP BY A.REDUCTION_CODE, A.REDUCTION_NAME, B.CAR_NO, B.RED_EXP_DATE, B.CONFIRM_DT, A.REDUCTION_RATE
+	</select>
+	
+	<select id="select_member_popup_confirm" parameterType="commonMap"	resultType="commonMap">
+		SELECT CONFIRM_YN
+		  FROM T_MEMBER_INFO
+		 WHERE MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<update id="update_member_popup_confirm">
+		UPDATE T_MEMBER_INFO
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{hMemberId}
+	</update>
+	
+	<update id="update_member_reduction">
+		UPDATE T_MEMBER_REDUCTION
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		WHERE REDUCTION_CODE = #{grd3ReductionCode}
+		  AND MEMBER_ID = #{hMemberId}
+	</update>
+	
+	<update id="update_car_reduction">
+		UPDATE T_CAR_REDUCTION
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		WHERE REDUCTION_CODE = #{grd4ReductionCode}
+		  AND CAR_NO = #{grd4CarNo}
+		  AND MEMBER_ID = #{hMemberId}
+	</update>
+	
+	<select id="select_user_excel" parameterType="commonMap" resultType="commonMap">
+			SELECT ROW_NUMBER() OVER(ORDER BY A.APPLY_DT DESC, A.CONFIRM_YN ASC, A.MEMBER_NAME) AS NUM 
+				 , A.MEMBER_ID, A.MEMBER_NAME, A.MEMBER_PHONE
+    	       	 , C.CAR_YN, C.CAR_YN_CODE
+    	       	 , B.CREDIT_YN, B.CREDIT_YN_CODE
+			     , D.REDUCTION_YN, D.REDUCTION_YN_CODE
+				 , F.CODE_NAME1 CONFIRM_YN_NAME, DATE_FORMAT(A.APPLY_DT, '%Y-%m-%d %H:%i:%s') APPLY_DT
+			     , E.USER_NAME CONFIRM_NAME, DATE_FORMAT(A.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') CONFIRM_DT, A.CONFIRM_YN
+			     , SC.CODE_NAME1 MEMBER_GUBN, A.MEMBER_EMAIL
+			  FROM T_MEMBER_INFO A
+			  LEFT OUTER JOIN (
+	  							SELECT T1.MEMBER_ID
+                 					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, '미등록', '등록') CREDIT_YN
+                 					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, 'N', 'Y') CREDIT_YN_CODE
+	  							  FROM (
+			  							 SELECT A.MEMBER_ID, COUNT(B.CREDIT_CODE) CREDIT_CNT
+			  							  FROM T_MEMBER_INFO A
+			  							  LEFT OUTER JOIN T_MEMBER_CREDIT B
+			  							    ON A.MEMBER_ID = B.MEMBER_ID
+			  							 GROUP BY A.MEMBER_ID
+	  							     ) T1
+			     ) B
+			    ON A.MEMBER_ID = B.MEMBER_ID
+			  LEFT OUTER JOIN (
+			 					SELECT T2.MEMBER_ID
+                 					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, '미등록', '등록') CAR_YN
+                 					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, 'N', 'Y') CAR_YN_CODE
+	  							  FROM (
+			  							 SELECT MI2.MEMBER_ID, COUNT(C.CAR_NO) CAR_CNT
+			  							  FROM T_MEMBER_INFO MI2
+			  							  LEFT OUTER JOIN T_CAR_INFO C
+			  							    ON MI2.MEMBER_ID = C.MEMBER_ID
+			  							 GROUP BY MI2.MEMBER_ID
+	  							     ) T2
+			     ) C
+			    ON A.MEMBER_ID = C.MEMBER_ID
+			  LEFT OUTER JOIN (
+			                    SELECT T3.MEMBER_ID
+                 					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, '미등록', '등록') REDUCTION_YN
+                 					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, 'N', 'Y') REDUCTION_YN_CODE
+	  							  FROM (
+			  							 SELECT MI3.MEMBER_ID, COUNT(V.REDUCTION_CODE) REDUCTION_CNT
+						                   FROM T_MEMBER_INFO MI3
+						                   LEFT OUTER JOIN (
+						                   					SELECT MEMBER_ID,REDUCTION_CODE
+						                   					  FROM T_MEMBER_REDUCTION 
+						                   					 WHERE REDUCTION_CODE != 'A14'
+									        )V
+									      	ON MI3.MEMBER_ID = V.MEMBER_ID
+						  				    GROUP BY MI3.MEMBER_ID
+	  							     ) T3
+			     ) D
+			    ON A.MEMBER_ID = D.MEMBER_ID
+			  LEFT OUTER JOIN T_USER_INFO E
+			    ON A.CONFIRM_ID = E.USER_ID
+			  LEFT OUTER JOIN T_SYS_COMCODE F
+			    ON A.CONFIRM_YN_PARENT = F.PARENT_CODE_ID
+			   AND A.CONFIRM_YN = F.CODE_ID
+			  LEFT OUTER JOIN T_SYS_COMCODE SC
+			    ON A.MEMBER_GUBN_PARENT = SC.PARENT_CODE_ID
+			   AND A.MEMBER_GUBN = SC.CODE_ID
+			 WHERE A.USE_YN = 'Y'
+			   AND A.CONFIRM_YN = 'Y'
+			   
+			<if test="kMemberName neq null and kMemberName neq ''" >
+				AND A.MEMBER_NAME = #{kMemberName}
+			</if>
+			
+			<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+				AND A.MEMBER_PHONE = #{kMemberPhone}
+			</if>
+			
+			<if test="kMemberEmail neq null and kMemberEmail neq ''" >
+				AND A.MEMBER_EMAIL = #{kMemberEmail}
+			</if>
+			
+			<if test="kMemberGubn neq null and kMemberGubn neq ''" >
+				AND A.MEMBER_GUBN = #{kMemberGubn}
+			</if>
+			
+			<if test="kCarYn neq null and kCarYn neq ''" >
+				AND C.CAR_YN_CODE = #{kCarYn}
+			</if>
+			
+			<if test="kCreditYn neq null and kCreditYn neq ''" >
+				AND B.CREDIT_YN_CODE = #{kCreditYn}
+			</if>
+			
+			<if test="kReductionYn neq null and kReductionYn neq ''" >
+				AND D.REDUCTION_YN_CODE = #{kReductionYn}
+			</if>
+			
+			ORDER BY A.APPLY_DT DESC, A.CONFIRM_YN ASC, A.MEMBER_NAME
+	</select>
+	
+    <select id="select_user_carreduction_excel" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.MEMBER_ID, A.MEMBER_NAME, A.MEMBER_PHONE, A.MEMBER_EMAIL, E.CODE_NAME1 MEMBER_GUBN
+       		 , B.CAR_ALIAS, B.CAR_NO, C.REDUCTION_CODE, D.REDUCTION_NAME, D.REDUCTION_RATE, DATE_FORMAT(C.RED_EXP_DATE, '%Y-%m-%d') RED_EXP_DATE
+  		  FROM T_MEMBER_INFO A
+ 		 INNER JOIN T_CAR_INFO B
+    		ON A.MEMBER_ID = B.MEMBER_ID
+   		 INNER JOIN T_CAR_REDUCTION C
+     		ON B.MEMBER_ID = C.MEMBER_ID
+     	   AND B.CAR_NO  = C.CAR_NO
+    	   AND C.DEL_YN = 'N'
+		   AND C.USE_YN = 'Y'
+   		  LEFT OUTER JOIN T_REDUCTION_INFO D
+     		ON C.REDUCTION_CODE = D.REDUCTION_CODE
+   		  LEFT OUTER JOIN T_SYS_COMCODE E
+     		ON A.MEMBER_GUBN_PARENT = E.PARENT_CODE_ID
+     	   AND A.MEMBER_GUBN = E.CODE_ID
+     	  LEFT OUTER JOIN (
+  							SELECT T1.MEMBER_ID
+                					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, 'N', 'Y') CREDIT_YN_CODE
+  							  FROM (
+		  							 SELECT A.MEMBER_ID, COUNT(B.CREDIT_CODE) CREDIT_CNT
+		  							  FROM T_MEMBER_INFO A
+		  							  LEFT OUTER JOIN T_MEMBER_CREDIT B
+		  							    ON A.MEMBER_ID = B.MEMBER_ID
+		  							 GROUP BY A.MEMBER_ID
+  							     ) T1
+			     ) B2
+			ON A.MEMBER_ID = B2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		 					SELECT T2.MEMBER_ID
+                					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, 'N', 'Y') CAR_YN_CODE
+  							  FROM (
+		  							 SELECT MI2.MEMBER_ID, COUNT(C.CAR_NO) CAR_CNT
+		  							  FROM T_MEMBER_INFO MI2
+		  							  LEFT OUTER JOIN T_CAR_INFO C
+		  							    ON MI2.MEMBER_ID = C.MEMBER_ID
+		  							 GROUP BY MI2.MEMBER_ID
+  							     ) T2
+			     ) C2
+			ON A.MEMBER_ID = C2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		                    SELECT T3.MEMBER_ID
+                					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, 'N', 'Y') REDUCTION_YN_CODE
+  							  FROM (
+		  							 SELECT MI3.MEMBER_ID, COUNT(V.REDUCTION_CODE) REDUCTION_CNT
+					                   FROM T_MEMBER_INFO MI3
+					                   LEFT OUTER JOIN (
+					                   					SELECT MEMBER_ID,REDUCTION_CODE
+					                   					  FROM T_MEMBER_REDUCTION 
+					                   					 WHERE REDUCTION_CODE != 'A14'
+								        )V
+								      	ON MI3.MEMBER_ID = V.MEMBER_ID
+					  				    GROUP BY MI3.MEMBER_ID
+  							     ) T3
+			     ) D2
+			ON A.MEMBER_ID = D2.MEMBER_ID
+     	 WHERE A.USE_YN = 'Y'
+    	   AND A.CONFIRM_YN = 'Y'
+     	  
+		<if test="kMemberName neq null and kMemberName neq ''" >
+			AND A.MEMBER_NAME = #{kMemberName}
+		</if>
+
+		<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+			AND A.MEMBER_PHONE = #{kMemberPhone}
+		</if>
+		
+		<if test="kMemberEmail neq null and kMemberEmail neq ''" >
+			AND A.MEMBER_EMAIL = #{kMemberEmail}
+		</if>
+		
+		<if test="kMemberGubn neq null and kMemberGubn neq ''" >
+			AND A.MEMBER_GUBN = #{kMemberGubn}
+		</if>
+		
+		<if test="kCarYn neq null and kCarYn neq ''" >
+			AND C2.CAR_YN_CODE = #{kCarYn}
+		</if>
+		
+		<if test="kCreditYn neq null and kCreditYn neq ''" >
+			AND B2.CREDIT_YN_CODE = #{kCreditYn}
+		</if>
+		
+		<if test="kReductionYn neq null and kReductionYn neq ''" >
+			AND D2.REDUCTION_YN_CODE = #{kReductionYn}
+		</if>
+			
+    	 ORDER BY B.REG_DT DESC
+    </select>
+    
+    <select id="select_user_credit_excel" parameterType="commonMap"	resultType="commonMap">
+    	SELECT A.MEMBER_ID, A.MEMBER_NAME, A.MEMBER_PHONE, A.MEMBER_EMAIL,D.CODE_NAME1  MEMBER_GUBN
+       		 , C.CODE_NAME1 CREDIT_COMP , B.CREDIT_NO , B.CREDIT_NO2 , B.CREDIT_NO3 , B.CREDIT_NO4 
+       		 , B.CREDIT_EXP_DATE, IF(B.REP_YN = 'Y','O','X') REP_YN, B.AUTO_PAY_YN
+  		  FROM T_MEMBER_INFO A
+  		 INNER JOIN T_MEMBER_CREDIT B
+     	 	ON A.MEMBER_ID = B.MEMBER_ID
+    	  LEFT OUTER JOIN T_SYS_COMCODE C
+     		ON B.CREDIT_COMP_PARENT = C.PARENT_CODE_ID
+   		   AND B.CREDIT_COMP = C.CODE_ID
+    	  LEFT OUTER JOIN T_SYS_COMCODE D
+     		ON A.MEMBER_GUBN_PARENT = D.PARENT_CODE_ID
+     	   AND A.MEMBER_GUBN = D.CODE_ID
+     	  LEFT OUTER JOIN (
+  							SELECT T1.MEMBER_ID
+                					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, 'N', 'Y') CREDIT_YN_CODE
+  							  FROM (
+		  							 SELECT A.MEMBER_ID, COUNT(B.CREDIT_CODE) CREDIT_CNT
+		  							  FROM T_MEMBER_INFO A
+		  							  LEFT OUTER JOIN T_MEMBER_CREDIT B
+		  							    ON A.MEMBER_ID = B.MEMBER_ID
+		  							 GROUP BY A.MEMBER_ID
+  							     ) T1
+			     ) B2
+			ON A.MEMBER_ID = B2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		 					SELECT T2.MEMBER_ID
+                					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, 'N', 'Y') CAR_YN_CODE
+  							  FROM (
+		  							 SELECT MI2.MEMBER_ID, COUNT(C.CAR_NO) CAR_CNT
+		  							  FROM T_MEMBER_INFO MI2
+		  							  LEFT OUTER JOIN T_CAR_INFO C
+		  							    ON MI2.MEMBER_ID = C.MEMBER_ID
+		  							 GROUP BY MI2.MEMBER_ID
+  							     ) T2
+			     ) C2
+			ON A.MEMBER_ID = C2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		                    SELECT T3.MEMBER_ID
+                					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, 'N', 'Y') REDUCTION_YN_CODE
+  							  FROM (
+		  							 SELECT MI3.MEMBER_ID, COUNT(V.REDUCTION_CODE) REDUCTION_CNT
+					                   FROM T_MEMBER_INFO MI3
+					                   LEFT OUTER JOIN (
+					                   					SELECT MEMBER_ID,REDUCTION_CODE
+					                   					  FROM T_MEMBER_REDUCTION 
+					                   					 WHERE REDUCTION_CODE != 'A14'
+								        )V
+								      	ON MI3.MEMBER_ID = V.MEMBER_ID
+					  				    GROUP BY MI3.MEMBER_ID
+  							     ) T3
+			     ) D2
+			ON A.MEMBER_ID = D2.MEMBER_ID
+     	 WHERE A.USE_YN = 'Y'
+           AND A.CONFIRM_YN = 'Y'
+           
+        <if test="kMemberName neq null and kMemberName neq ''" >
+			AND A.MEMBER_NAME = #{kMemberName}
+		</if>
+
+		<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+			AND A.MEMBER_PHONE = #{kMemberPhone}
+		</if>
+		
+		<if test="kMemberEmail neq null and kMemberEmail neq ''" >
+			AND A.MEMBER_EMAIL = #{kMemberEmail}
+		</if>
+		
+		<if test="kMemberGubn neq null and kMemberGubn neq ''" >
+			AND A.MEMBER_GUBN = #{kMemberGubn}
+		</if>
+		
+		<if test="kCarYn neq null and kCarYn neq ''" >
+			AND C2.CAR_YN_CODE = #{kCarYn}
+		</if>
+		
+		<if test="kCreditYn neq null and kCreditYn neq ''" >
+			AND B2.CREDIT_YN_CODE = #{kCreditYn}
+		</if>
+		
+		<if test="kReductionYn neq null and kReductionYn neq ''" >
+			AND D2.REDUCTION_YN_CODE = #{kReductionYn}
+		</if>
+         ORDER BY B.REG_DT DESC  	
+    </select>
+    
+    <select id="select_user_reduction_excel" parameterType="commonMap"	resultType="commonMap">
+    	SELECT A.MEMBER_ID, A.MEMBER_NAME, A.MEMBER_PHONE, A.MEMBER_EMAIL,D.CODE_NAME1  MEMBER_GUBN,C.REDUCTION_NAME,C.REDUCTION_RATE
+    	     , DATE_FORMAT(B.RED_EXP_DATE, '%Y-%m-%d') RED_EXP_DATE
+  		  FROM T_MEMBER_INFO A
+ 		 INNER JOIN T_MEMBER_REDUCTION B
+ 			ON A.MEMBER_ID = B.MEMBER_ID
+ 		 INNER JOIN T_REDUCTION_INFO C
+   			ON B.REDUCTION_CODE = C.REDUCTION_CODE
+ 		  LEFT OUTER JOIN T_SYS_COMCODE D
+            ON A.MEMBER_GUBN_PARENT = D.PARENT_CODE_ID
+           AND A.MEMBER_GUBN = D.CODE_ID
+          LEFT OUTER JOIN (
+  							SELECT T1.MEMBER_ID
+                					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, 'N', 'Y') CREDIT_YN_CODE
+  							  FROM (
+		  							 SELECT A.MEMBER_ID, COUNT(B.CREDIT_CODE) CREDIT_CNT
+		  							  FROM T_MEMBER_INFO A
+		  							  LEFT OUTER JOIN T_MEMBER_CREDIT B
+		  							    ON A.MEMBER_ID = B.MEMBER_ID
+		  							 GROUP BY A.MEMBER_ID
+  							     ) T1
+			     ) B2
+			ON A.MEMBER_ID = B2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		 					SELECT T2.MEMBER_ID
+                					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, 'N', 'Y') CAR_YN_CODE
+  							  FROM (
+		  							 SELECT MI2.MEMBER_ID, COUNT(C.CAR_NO) CAR_CNT
+		  							  FROM T_MEMBER_INFO MI2
+		  							  LEFT OUTER JOIN T_CAR_INFO C
+		  							    ON MI2.MEMBER_ID = C.MEMBER_ID
+		  							 GROUP BY MI2.MEMBER_ID
+  							     ) T2
+			     ) C2
+			ON A.MEMBER_ID = C2.MEMBER_ID
+     	  LEFT OUTER JOIN (
+		                    SELECT T3.MEMBER_ID
+                					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, 'N', 'Y') REDUCTION_YN_CODE
+  							  FROM (
+		  							 SELECT MI3.MEMBER_ID, COUNT(V.REDUCTION_CODE) REDUCTION_CNT
+					                   FROM T_MEMBER_INFO MI3
+					                   LEFT OUTER JOIN (
+					                   					SELECT MEMBER_ID,REDUCTION_CODE
+					                   					  FROM T_MEMBER_REDUCTION 
+					                   					 WHERE REDUCTION_CODE != 'A14'
+								        )V
+								      	ON MI3.MEMBER_ID = V.MEMBER_ID
+					  				    GROUP BY MI3.MEMBER_ID
+  							     ) T3
+			     ) D2
+			ON A.MEMBER_ID = D2.MEMBER_ID
+         WHERE A.USE_YN = 'Y'
+    	   AND A.CONFIRM_YN = 'Y'
+    	   
+   	    <if test="kMemberName neq null and kMemberName neq ''" >
+			AND A.MEMBER_NAME = #{kMemberName}
+		</if>
+
+		<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+			AND A.MEMBER_PHONE = #{kMemberPhone}
+		</if>
+		
+		<if test="kMemberEmail neq null and kMemberEmail neq ''" >
+			AND A.MEMBER_EMAIL = #{kMemberEmail}
+		</if>
+		
+		<if test="kMemberGubn neq null and kMemberGubn neq ''" >
+			AND A.MEMBER_GUBN = #{kMemberGubn}
+		</if>
+		
+		<if test="kCarYn neq null and kCarYn neq ''" >
+			AND C2.CAR_YN_CODE = #{kCarYn}
+		</if>
+		
+		<if test="kCreditYn neq null and kCreditYn neq ''" >
+			AND B2.CREDIT_YN_CODE = #{kCreditYn}
+		</if>
+		
+    	<if test="kReductionYn neq null and kReductionYn neq ''" >
+			AND D2.REDUCTION_YN_CODE = #{kReductionYn}
+    	</if>
+			
+    	 ORDER BY B.CONFIRM_DT DESC
+    </select>
+    
+    <update id="update_memberPassword">
+		UPDATE T_MEMBER_INFO
+		   SET MEMBER_PWD = #{kMemberPw}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		WHERE MEMBER_ID = #{kMemberId}
+	</update>
+	
+	<delete id="delete_memberReduction">
+		DELETE FROM T_MEMBER_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND RED_EXP_DATE = #{grdRedExpDate}
+	</delete>
+	
+	<update id="delete_enrollmentFile">
+		UPDATE T_APPLY_MEMBER_REDUCTION
+		   SET DEL_YN = 'Y'
+		     , FILE_REL_KEY = ''
+			 , CONFIRM_ID = #{hMemberId}
+			 , CONFIRM_DT = NOW()
+			 , MOD_ID = #{hMemberId}
+			 , MOD_DT = NOW()
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND RED_EXP_DATE = #{grdRedExpDate}
+	</update>
+	
+	<delete id="delete_carInfo">
+		DELETE FROM T_CAR_INFO
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND CAR_NO = #{grdCarNo}
+	</delete>
+	
+	<delete id="delete_carReductionDel">
+		DELETE FROM T_CAR_REDUCTION
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND CAR_NO = #{grdCarNo}
+	</delete>
+	
+	<insert id="insert_carInfoHistory">
+		INSERT INTO T_CAR_INFO_HISTORY (
+	           MEMBER_ID, CAR_NO, H_SEQ, CAR_ALIAS, CAR_MODEL
+	         , CAR_GUBN_PARENT, CAR_GUBN, FILE_REL_KEY, USE_YN_P, USE_YN
+	         , REG_ID, REG_DT, MOD_ID, MOD_DT, DEL_GUBN_PARENT
+	         , DEL_GUBN, CAR_CC, CAR_LENGTH, RIDING_CNT
+			 , CAR_TYPE_PARENT, CAR_TYPE, FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN, LOW_PLT_GUBN_PARENT
+			 , LOW_PLT_GUBN, REASON
+		) SELECT MEMBER_ID, CAR_NO, #{hSeq} AS H_SEQ, CAR_ALIAS, CAR_MODEL
+       		   , CAR_GUBN_PARENT, CAR_GUBN, FILE_REL_KEY, USE_YN_P, USE_YN
+       		   , REG_ID, REG_DT, MOD_ID, MOD_DT, 'DEL_GUBN'
+       		   , 'A', CAR_CC, CAR_LENGTH, RIDING_CNT
+       		   , CAR_TYPE_PARENT, CAR_TYPE, FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN, LOW_PLT_GUBN_PARENT
+	  		   , LOW_PLT_GUBN, #{delComment} AS REASON
+		    FROM T_CAR_INFO
+           WHERE MEMBER_ID = #{hMemberId}
+             AND CAR_NO = #{grdCarNo}
+	</insert>
+	
+	<insert id="insert_carReductionHistory">
+		INSERT INTO T_CAR_REDUCTION_HISTORY (
+		    REDUCTION_CODE, CAR_NO, MEMBER_ID, H_SEQ, RED_EXP_DATE
+		  , FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+		  , REG_ID, REG_DT, MOD_ID, MOD_DT, DEL_YN_PARENT
+		  , DEL_YN, REASON
+		) VALUES (
+			#{grdReductionCode}, #{grdCarNo}, #{hMemberId}, #{hSeq}, #{redExpDate}
+		  , #{fileRelKey}, #{confirmYnParent}, #{confirmYn}, #{confirmId}, #{confirmDt}
+		  , #{regId}, #{regDt}, #{modId}, #{modDt}, #{delYnParent}
+		  , 'Y', #{delComment}
+		)
+	</insert>
+	
+	<insert id="insert_memberReductionHistory">
+		INSERT INTO T_MEMBER_REDUCTION_HISTORY (
+			   REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+			 , H_SEQ
+			 , REG_ID, REG_DT
+			 , MOD_ID, MOD_DT
+			 , CONFIRM_YN_PARENT, CONFIRM_YN
+			 , CONFIRM_ID, CONFIRM_DT
+			 ) SELECT REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+				    , #{hSeq} AS H_SEQ
+				    , #{hMemberId} AS REG_ID, NOW() AS REG_DT
+				    , #{hMemberId} AS MOD_ID, NOW() AS MOD_DT
+				    , 'CONFIRM_YN' AS CONFIRM_YN_PARENT, 'Y' AS CONFIRM_YN
+				    , #{hMemberId} AS CONFIRM_ID, NOW() AS CONFIRM_DT
+				 FROM T_MEMBER_REDUCTION
+				WHERE REDUCTION_CODE = #{grdReductionCode}
+				  AND MEMBER_ID = #{hMemberId}
+				  AND RED_EXP_DATE = #{grdRedExpDate}
+	</insert>
+	
+	<select id="select_hSeqCarInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(H_SEQ)+1 AS H_SEQ
+		  FROM T_CAR_INFO_HISTORY
+	</select>
+	
+	<select id="select_hSeqCarReduction" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(H_SEQ)+1 AS H_SEQ
+		  FROM T_CAR_REDUCTION_HISTORY
+	</select>
+	
+	<select id="select_hSeqMemberReduction" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(H_SEQ) AS H_SEQ
+  		  FROM T_MEMBER_REDUCTION_HISTORY
+	</select>
+	
+	<select id="select_fileKey" parameterType="commonMap" resultType="commonMap">
+		SELECT A.FILE_REL_KEY
+	         , F.FILE_KEY
+	      FROM T_APPLY_MEMBER_REDUCTION A
+	      LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+	      LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+	     WHERE A.REDUCTION_CODE = #{reductionCode}
+	       AND A.MEMBER_ID = #{hMemberId}
+	       AND A.DEL_YN = 'N'
+	</select>
+	
+	<select id="select_memberReduction" parameterType="commonMap" resultType="commonMap">
+		SELECT FILE_REL_KEY, REG_ID, REG_DT, MOD_ID, MOD_DT, REDUCTION_CODE
+			 , CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+		  FROM T_MEMBER_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+	       AND RED_EXP_DATE = #{grdRedExpDate}
+	</select>
+
+	<select id="select_carReduction" parameterType="commonMap" resultType="commonMap">
+		SELECT RED_EXP_DATE, FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID
+			 , CONFIRM_DT, REG_ID, REG_DT,  MOD_ID, MOD_DT, DEL_YN_PARENT, DEL_YN
+		  FROM T_CAR_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND CAR_NO = #{grdCarNo}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND USE_YN = 'Y'
+	</select>
+	
+	<select id="select_gugunCode" parameterType="commonMap" resultType="commonMap">
+		SELECT CODE_ID
+		  FROM T_SYS_COMCODE
+		 WHERE PARENT_CODE_ID = 'RESION'
+		   AND CODE_NAME1 = #{kGugun}
+	</select>
+	
+	<update id="update_memberAddr">
+		UPDATE T_MEMBER_INFO
+		   SET ZIP_CODE = #{kZipCode}
+		   	 , ADDR_CODE1 = #{kAddrCode1}
+		   	 , ADDR_CODE2 = #{kAddrCode2}
+		   	 , GUGUN_PARENT = 'RESION'
+		   	 , GUGUN = #{gugunCode}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		WHERE MEMBER_ID = #{memberId}
+	</update>
+	
+	<update id="update_memberReduction">
+		UPDATE T_MEMBER_REDUCTION
+		   SET RED_EXP_DATE = REPLACE(#{grdRedExpDate}, '-', '')
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		WHERE MEMBER_ID = #{memberId}
+		  AND REDUCTION_CODE = #{grdReductionCode}
+	</update>
+    
+    <!-- 특정 차량이 입차 상태인지를 확인 -->
+    <select id="select_CheckParkingCar" parameterType="commonMap" resultType="commonMap">
+        SELECT CAR_NO
+          FROM T_CAR_STATUS
+         WHERE CAR_NO = #{grdCarNo}
+           AND MEMBER_ID = #{hMemberId}
+           AND INOUT_STATUS = 'IN'
+    </select>
+</mapper>

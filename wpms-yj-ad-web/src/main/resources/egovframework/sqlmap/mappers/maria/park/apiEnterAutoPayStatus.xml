@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.apiEnterAutoPayStatus">
+	
+	<select id="select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN EA.RESULT_CODE = 00 THEN '성공' ELSE '실패' END RESULT_GUBN
+		     , DATE_FORMAT(EA.REG_DT, '%Y-%m-%d %H:%i:%s') REG_DT
+		     , EA.ENTER_API_CODE, EA.SERVICE_KEY, EA.RESULT_CODE
+	         , EA.PARKING_AREA_CODE, EA.CAR_NUMBER_RECV
+	         , DATE_FORMAT(EA.ENTER_DT, '%Y-%m-%d %H:%i:%s') ENTER_DT, EA.ERR_MSG, EA.RESULT_MSG, EA.WALLET_FREE_YN
+	         , DATE_FORMAT(EA.MDFCN_DT, '%Y-%m-%d %H:%i:%s') MDFCN_DT
+	         , DATE_FORMAT(EA.RECEIVE_DT, '%Y-%m-%d %H:%i:%s') RECEIVE_DT
+	      FROM T_ENTER_AUTOPAY_API_HISTORY EA
+	     WHERE 1=1
+		
+		<if test="carNumber neq null and carNumber neq ''" >
+			AND EA.CAR_NUMBER_RECV = #{carNumber} 
+		</if>
+		
+		<if test="kParkingNo neq null and kParkingNo neq ''">
+			AND EA.PARKING_AREA_CODE = #{kParkingNo}
+		</if>
+		
+		<if test="kServiceKey neq null and kServiceKey neq ''">
+			AND EA.SERVICE_KEY = #{kServiceKey}
+		</if>
+		
+		<choose>
+			<when test ='kResultGubn == "Y"'>
+				AND EA.RESULT_CODE = 00
+			</when>
+			<when test ='kResultGubn == "N"'>
+				AND EA.RESULT_CODE != '00'
+			</when>
+		</choose>
+  		   AND EA.OCCUR_DT = REPLACE( #{regDt}, '-', '')
+		 ORDER BY EA.REG_DT DESC
+	</select>
+	
+	<select id="select_parkInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT CONCAT(PARKING_NAME , '(' , PARKING_AREA_CODE, ')') AS TEXT
+		     , PARKING_AREA_CODE VALUE
+		  FROM T_PARKING_INFO
+		 WHERE API_VER_GUBN = 2
+		   AND USE_YN = 'Y'
+	</select>
+</mapper>

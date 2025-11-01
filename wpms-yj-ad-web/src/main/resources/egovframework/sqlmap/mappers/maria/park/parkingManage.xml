@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingManage">
+	
+	<select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NO VALUE, PARKING_NAME TEXT
+	      FROM T_PARKING_INFO
+         WHERE USE_YN = 'Y'
+		<if test="userParkingGov neq null and userParkingGov neq ''" >
+		   AND P_GOV_CODE = #{userParkingGov}
+		</if>
+		 ORDER BY PARKING_NAME
+	</select>
+	
+	<select id="select_parkList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.*
+		  FROM (SELECT PI.PARKING_NO, PI.PARKING_NAME, SCC.CODE_NAME1 GUGUN_NAME
+		  			 , CONCAT(FORMAT(PI.MINUTE_PRICE, 0) , '원') AS MINUTE_PRICE
+		  			 , CONCAT(FORMAT(PI.DAY_PRICE, 0) , '원') AS DAY_PRICE
+				     , PI.GUGUN, PI.DONG, PI.PARKING_TEL
+				     , PI.PARKING_SPOT
+				     , PI.PARKING_SPOT_NOW
+				     , PCI.P_COMP_NAME, PGI.P_GOV_NAME
+				     , CONCAT('[' , PI.PARKING_POST , '] ' , PI.PARKING_ADDR , ' ' , PI.PARKING_ADDR2) AS ADDRESS
+				     , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'USE_YN' AND CODE_ID = PI.USE_YN) AS USE_YN_NAME
+				     , (SELECT USER_NAME FROM T_USER_INFO WHERE USER_ID = PI.MOD_ID) AS MOD_ID
+					 , PI.USE_YN, PI.REG_DT, PI.MOD_DT
+					 , PI.P_COMP_CODE, PI.P_GOV_CODE
+                     , PI.PARKING_AREA_CODE
+				  FROM T_PARKING_INFO PI
+				  LEFT OUTER JOIN T_PARKING_COMP_INFO PCI
+				    ON PI.P_COMP_CODE = PCI.P_COMP_CODE
+				  LEFT OUTER JOIN T_PARKING_GOV_INFO PGI
+				    ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+				  LEFT OUTER JOIN T_SYS_COMCODE SCC
+				    ON PI.GUGUN_PARENT = SCC.PARENT_CODE_ID
+				   AND PI.GUGUN = SCC.CODE_ID
+		     ) T
+		 WHERE 1=1
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND T.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kLocalGubn neq null and kLocalGubn neq ''" >
+			<![CDATA[AND T.GUGUN = #{kLocalGubn}]]>
+		</if>
+
+		<if test="kParkingCompCode neq null and kParkingCompCode neq ''" >
+			AND T.P_COMP_CODE = #{kParkingCompCode}
+		</if>
+
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+
+		<if test="kUseYn neq null and kUseYn neq ''" >
+			AND T.USE_YN = #{kUseYn}
+		</if>
+		 ORDER BY T.PARKING_NAME ASC
+	</select>
+
+	<select id="select_parking_comp_code" parameterType="commonMap" resultType="commonMap">
+		SELECT P_COMP_CODE VALUE, P_COMP_NAME TEXT
+		  FROM T_PARKING_COMP_INFO
+		 WHERE USE_YN = 'Y'
+		 ORDER BY P_COMP_CODE
+	</select>
+
+	<select id="select_parking_gov_code" parameterType="commonMap" resultType="commonMap">
+		SELECT P_GOV_CODE VALUE, P_GOV_NAME TEXT
+		  FROM T_PARKING_GOV_INFO
+		 ORDER BY P_GOV_CODE
+	</select>
+</mapper>

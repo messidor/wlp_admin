@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.elecReduction">
+
+
+	<select id="select_parkingInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NO VALUE, PARKING_NAME TEXT
+	      FROM T_PARKING_INFO
+         WHERE 1=1
+		<if test="userParkingGov neq null and userParkingGov neq ''" >
+		   AND P_GOV_CODE = #{userParkingGov}
+		</if>
+	</select>
+	
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT E.ELEC_APPLY_CODE, E.MEMBER_ID, E.APPLY_DT
+			 , E.MEMBER_ID, E.PARKING_NO, P.PARKING_NAME
+			 , E.CAR_NO, E.ELECT_DATE
+			 , C1.CODE_NAME1 AS CONFIRM_GUBN
+			 , C2.CODE_NAME1 AS CANCEL_GUBN
+			 , UI.USER_NAME AS CONFIRM_NAME
+			 , E.CONFIRM_ID, E.CONFIRM_DT
+		  FROM T_ELEC_REDUCTION E
+		 INNER JOIN T_PARKING_INFO P
+			ON E.PARKING_NO = P.PARKING_NO
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+			ON E.CONFIRM_GUBN_PARENT = C1.PARENT_CODE_ID
+		   AND E.CONFIRM_GUBN = C1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C2
+			ON E.CANCEL_GUBN_PARENT = C2.PARENT_CODE_ID
+		   AND E.CANCEL_GUBN = C2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+			ON E.CONFIRM_ID = UI.USER_ID
+		 WHERE 1=1
+	    <if test="startDate neq null and startDate neq ''" >
+			AND DATE_FORMAT(E.APPLY_DT, '%Y-%m-%d') BETWEEN #{startDate} AND #{endDate}
+		</if> 
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND P.P_GOV_CODE = #{kParkingGovCode}
+		</if>  
+	    <if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND E.PARKING_NO = #{kParkingNo}
+		</if>
+		<if test="kCarNumber neq null and kCarNumber neq ''" >
+			AND E.CAR_NO LIKE '%${kCarNumber}%'
+		</if>
+		<if test="kConfirmGubn neq null and kConfirmGubn neq ''" >
+			AND E.CONFIRM_GUBN = #{kConfirmGubn} 
+		</if>
+		<if test="kCancelGubn neq null and kCancelGubn neq ''" >
+			AND E.CANCEL_GUBN = #{kCancelGubn} 
+		</if>
+		
+		ORDER BY E.APPLY_DT DESC
+		
+	</select>
+	
+	<select id="Select_PopupList" parameterType="commonMap" resultType="commonMap">
+		SELECT DATE_FORMAT(E.APPLY_DT, '%Y-%m-%d %H:%i:%s') APPLY_DT
+			 , E.CAR_NO
+			 , P.PARKING_NAME
+			 , DATE_FORMAT(STR_TO_DATE(E.ELECT_DATE, '%Y%m%d%H%i%s'), '%Y-%m-%d %H:%i:%s') ELECT_DATE
+			 , C1.CODE_NAME1 AS CONFIRM_GUBN
+			 , E.CONFIRM_GUBN AS CONFIRM_GUBN_CODE
+			 , UI.USER_NAME AS CONFIRM_NAME
+			 , E.CANCEL_GUBN AS CANCEL_GUBN_CODE
+			 , DATE_FORMAT(E.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') CONFIRM_DT
+		     , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_PATH ,F.FILE_NAME , '.' , F.FILE_EXT) END AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) END AS NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) END AS DISP_FILE_NAME
+			 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+		     , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+		     , E.FILE_REL_KEY
+		     , E.REJECT_REASON
+		  FROM T_ELEC_REDUCTION E
+		 INNER JOIN T_PARKING_INFO P
+			ON E.PARKING_NO = P.PARKING_NO
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+			ON E.CONFIRM_GUBN_PARENT = C1.PARENT_CODE_ID
+		   AND E.CONFIRM_GUBN = C1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C2
+			ON E.CANCEL_GUBN_PARENT = C2.PARENT_CODE_ID
+		   AND E.CANCEL_GUBN = C2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+			ON E.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON E.FILE_REL_KEY = R.FILE_REL_KEY
+	      LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		 WHERE E.ELEC_APPLY_CODE = #{hElecApplyCode}
+		   AND E.CAR_NO = #{hCarNo}
+		   AND E.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<update id="update_elecReduction">
+		UPDATE T_ELEC_REDUCTION
+		   SET CONFIRM_GUBN = #{confirmGubn}
+			 , CONFIRM_ID = #{userId}
+			 , CONFIRM_DT = NOW()
+			 <if test='confirmGubn eq "C"'>
+			 , REJECT_REASON = #{rejectReason}
+			 </if>
+		 WHERE ELEC_APPLY_CODE = #{hElecApplyCode}
+		   AND CAR_NO = #{hCarNo}
+		   AND MEMBER_ID = #{memberId}
+	</update>
+
+</mapper>

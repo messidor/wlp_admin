@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.parkingStatus">
+	<select id="select_parkStatusList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		     IFNULL(SUM(CASE WHEN T.ENT_DAY = ${item.kDayArr} THEN T.TOTAL END), 0) AS `${item.kDayArr}일`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_DAY
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		               , A.P_COMP_CODE
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( SELECT PARKING_NO 
+									       , DATE_FORMAT(P_ENT_DT, '%Y') ENT_YEAR
+									       , DATE_FORMAT(P_ENT_DT, '%m') ENT_MONTH
+									       , DATE_FORMAT(P_ENT_DT, '%d') ENT_DAY
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE P_OUT_DT IS NOT NULL
+									     AND PARKING_STATUS = 'OUT'
+									     AND DEL_YN = 'N'
+									     AND DATE_FORMAT(P_ENT_DT, '%Y') = #{kYearDate}
+									     AND DATE_FORMAT(P_ENT_DT, '%m') = #{kMonthDate}
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_DAY, A.P_COMP_CODE
+		     ) T
+		 WHERE 1=1
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		 ORDER BY T.PARKING_NAME
+	</select>
+	
+	<select id="select_excelList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.PARKING_NAME, ROW_NUMBER() OVER(ORDER BY T.PARKING_NAME) AS NUM, 
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		     IFNULL(SUM(CASE WHEN T.ENT_DAY = ${item.kDayArr} THEN T.TOTAL END), 0) AS `${item.kDayArr}일`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_DAY
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		               , A.P_COMP_CODE
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( SELECT PARKING_NO 
+									       , DATE_FORMAT(P_ENT_DT, '%Y') ENT_YEAR
+									       , DATE_FORMAT(P_ENT_DT, '%m') ENT_MONTH
+									       , DATE_FORMAT(P_ENT_DT, '%d') ENT_DAY
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE P_OUT_DT IS NOT NULL
+									     AND PARKING_STATUS = 'OUT'
+									     AND DEL_YN = 'N'
+									     AND DATE_FORMAT(P_ENT_DT, '%Y') = #{kYearDate}
+									     AND DATE_FORMAT(P_ENT_DT, '%m') = #{kMonthDate}
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, ENT_YEAR, ENT_MONTH, ENT_DAY, A.P_COMP_CODE
+		     ) T
+		 WHERE 1=1
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		 ORDER BY T.PARKING_NAME
+	</select>
+</mapper>

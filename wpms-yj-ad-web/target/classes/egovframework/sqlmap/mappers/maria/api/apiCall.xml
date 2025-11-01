@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.api.apiCall">
+
+    <!--
+    ************************************************************
+    * 자동결제 API용 쿼리
+    ************************************************************
+    -->
+
+    <!-- 로그인 사용자의 차량 중 입차중인 차량과 주차장별 api 호출 URL을 확인 -->
+    <select id="select_ParkingCarList" parameterType="commonMap" resultType="commonMap">
+        SELECT H.CAR_NO, H.PARKING_NO, PC.P_SERVICE_KEY AS SERVICE_KEY, PI.API_URL
+             , IFNULL(ST.REG_API_TRY_CNT, 0) AS REG_API_TRY_CNT
+             , IFNULL(ST.AUTO_API_TRY_CNT, 0) AS AUTO_API_TRY_CNT
+          FROM T_PARKING_CAR_HISTORY H
+         INNER JOIN ( SELECT CAR_NO, MEMBER_ID, MAX(P_ENT_DT) P_ENT_DT
+                        FROM T_PARKING_CAR_HISTORY
+                       WHERE MEMBER_ID = #{memberIdEnc}
+                       GROUP BY CAR_NO, MEMBER_ID
+             ) HM
+            ON H.MEMBER_ID = HM.MEMBER_ID
+           AND H.CAR_NO = HM.CAR_NO
+           AND H.P_ENT_DT = HM.P_ENT_DT
+         INNER JOIN T_PARKING_INFO PI
+            ON H.PARKING_NO = PI.PARKING_NO
+         INNER JOIN T_PARKING_COMP_INFO PC
+            ON PI.P_COMP_CODE = PC.P_COMP_CODE
+         INNER JOIN T_SYS_OPTION ST
+            ON 1=1
+         WHERE H.MEMBER_ID = #{memberIdEnc}
+           AND PARKING_STATUS = 'IN'
+    </select>
+    
+    <!-- 하나의 차량에 대한 t_car_status 정보를 업데이트 처리. 자동결제 여부, 지불여부(회원여부 + 결제가능 카드 여부 + 자동결제 여부) 업데이트. -->
+    <update id="update_NewMemberCarStatusAutoPayGubn">
+        UPDATE T_CAR_STATUS
+           SET AUTO_PAY_GUBN = #{walletFreeYn}
+             , PAY_YN = #{walletFreeYn}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE CAR_NO = #{carNo}
+           AND MEMBER_ID = #{memberIdEnc}
+    </update>
+    
+    <!--
+    ************************************************************
+    * 회원가입 API용 쿼리
+    ************************************************************
+    -->
+    
+    <!-- 입차중인 차량의 정보 확인(IS_API1 = Y인 경우 입차 API 1.0, 아닌 경우 입차 API 2.0을 통해 입차한 차량으로 간주함 -->
+    <select id="select_ParkingCarInList" parameterType="commonMap" resultType="commonMap">
+        SELECT Z.CAR_NO, Z.P_ENT_DT, Z.PARKING_NO, Z.HISTORY_CODE, Z.P_SERVICE_KEY
+             , Z.API_URL, Z.AUTO_API_TRY_CNT, Z.CALL_API_YN, Z.API_VER_GUBN
+             , Z.CURRENT_AUTO_PAY_GUBN, Z.IS_API1, Z.CHK_OKAY, Z.PARKING_AREA_CODE
+          FROM (
+                SELECT CS.CAR_NO, PH.P_ENT_DT, CS.PARKING_NO, CS.HISTORY_CODE, PC.P_SERVICE_KEY
+                     , P.API_URL, O.AUTO_API_TRY_CNT, O.CALL_API_YN, P.API_VER_GUBN
+                     , M.AUTO_PAY_GUBN AS CURRENT_AUTO_PAY_GUBN, P.PARKING_AREA_CODE
+                     , CASE WHEN A1.ENTER_API_CODE IS NULL THEN 'N' ELSE 'Y' END AS IS_API1
+                     , CASE WHEN CS.MEMBER_ID = CI.MEMBER_ID THEN 'Y'
+                            WHEN CS.MEMBER_ID != CI.MEMBER_ID AND MCS.CAR_NO IS NOT NULL THEN 'Y'
+                            ELSE 'N'
+                        END AS CHK_OKAY
+                  FROM T_CAR_STATUS CS
+                 INNER JOIN T_CAR_INFO CI
+                    ON CS.CAR_NO = CI.CAR_NO
+                 INNER JOIN T_PARKING_CAR_HISTORY PH
+                    ON CS.HISTORY_CODE = PH.HISTORY_CODE
+                 INNER JOIN T_PARKING_INFO P
+                    ON CS.PARKING_NO = P.PARKING_NO
+                 INNER JOIN T_PARKING_COMP_INFO PC
+                    ON P.P_COMP_CODE = PC.P_COMP_CODE
+                 INNER JOIN T_MEMBER_INFO M
+                    ON CI.MEMBER_ID = M.MEMBER_ID
+                 INNER JOIN T_SYS_OPTION O
+                    ON 1 = 1
+                  LEFT OUTER JOIN (
+                            SELECT CAR_NO
+                              FROM T_CAR_STATUS
+                             WHERE MEMBER_ID = #{memberIdEnc}
+                               AND INOUT_STATUS IS NULL
+                             GROUP BY CAR_NO
+                       ) MCS
+                    ON CS.CAR_NO = MCS.CAR_NO
+                  LEFT OUTER JOIN T_ENTER_API_HISTORY A1
+                    ON CS.HISTORY_CODE = A1.HISTORY_CODE
+                 WHERE CI.MEMBER_ID = #{memberIdEnc}
+                   AND CS.INOUT_STATUS = 'IN'
+               ) Z
+         WHERE Z.CHK_OKAY = 'Y'
+    </select>
+    
+    <!-- T_PARKING_CAR_HISTORY 업데이트 (비회원 기록만 업데이트) -->
+    <update id="update_NewMemberParkingCarHistorySingle">
+        UPDATE T_PARKING_CAR_HISTORY
+           SET MEMBER_ID = #{memberIdEnc}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE HISTORY_CODE = #{historyCode}
+           AND CAR_NO = #{carNo}
+           AND MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+           AND PARKING_NO = #{parkingNo}
+    </update>
+    
+    <!-- T_PARKING_CAR_HISTORY 업데이트 (member_id 가 unknown 인 것을 신규 사용자의 id로 변경) -->
+    <update id="update_NewMemberParkingCarHistory">
+        UPDATE T_PARKING_CAR_HISTORY
+           SET MEMBER_ID = #{memberIdEnc}
+             , REG_ID = #{memberIdEnc}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE HISTORY_CODE IN (
+                SELECT A.HISTORY_CODE
+                  FROM T_PARKING_CAR_HISTORY A
+                 INNER JOIN (
+                            SELECT A.CAR_NO, MAX(A.P_ENT_DT) AS P_ENT_DT
+                              FROM T_PARKING_CAR_HISTORY A
+                             INNER JOIN T_CAR_INFO B
+                                ON A.CAR_NO = B.CAR_NO
+                             WHERE B.MEMBER_ID = #{memberIdEnc}
+                             GROUP BY A.CAR_NO
+                       ) B
+                    ON A.MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+                   AND A.PARKING_STATUS = 'IN'
+                   AND A.CAR_NO = B.CAR_NO
+                   AND A.P_ENT_DT = B.P_ENT_DT
+                 INNER JOIN T_PARKING_INFO PI
+                    ON A.PARKING_NO = PI.PARKING_NO
+                 INNER JOIN T_PARKING_COMP_INFO PC
+                    ON PI.P_COMP_CODE = PC.P_COMP_CODE
+               )
+    </update>
+    
+    <!-- 하나의 차량에 대한 t_car_status 정보를 업데이트 처리. id가 unknown 인 경우에만 업데이트 (비회원 차량인 경우) -->
+    <update id="update_NewMemberCarStatusSingle">
+        UPDATE T_CAR_STATUS
+           SET MEMBER_ID = #{memberIdEnc}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE CAR_NO = #{carNo}
+           AND MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+    </update>
+    
+    <!-- T_CAR_STATUS 업데이트 (member_id 가 unknown 인 것을 신규 사용자의 id로 변경) -->
+    <update id="update_NewMemberCarStatus">
+        UPDATE T_CAR_STATUS
+           SET MEMBER_ID = #{memberIdEnc}
+             , AUTO_PAY_GUBN = #{walletFreeYN}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE CAR_NO IN (
+                SELECT A.CAR_NO
+                  FROM T_CAR_STATUS A
+                 INNER JOIN T_CAR_INFO B
+                    ON A.CAR_NO = B.CAR_NO
+                 WHERE A.MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+                   AND B.MEMBER_ID = #{memberIdEnc}
+                   AND A.INOUT_STATUS = 'IN'
+               )
+    </update>
+    
+    <!-- 차량 승인시 T_CAR_STATUS 에 넣어주는 데이터를 삭제 처리 -->
+    <delete id="delete_NewMemberCarStatus">
+        DELETE FROM T_CAR_STATUS
+         WHERE MEMBER_ID = #{memberIdEnc}
+           AND CAR_NO IN (
+                SELECT A.CAR_NO
+                  FROM T_CAR_STATUS A
+                 INNER JOIN T_CAR_INFO B
+                    ON A.CAR_NO = B.CAR_NO
+                 WHERE A.MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+                   AND B.MEMBER_ID = #{memberIdEnc}
+                   AND A.INOUT_STATUS = 'IN'
+               )
+           AND PARKING_NO IS NULL
+    </delete>
+    
+    <!-- T_CAR_STATUS 업데이트 (member_id 가 unknown 인 것을 신규 사용자의 id로 변경) -->
+    <update id="update_CarStatusReduction">
+        UPDATE T_CAR_STATUS
+           SET REDUCTION_CODE = #{reductionCode}
+             , REDUCTION_NAME = #{reductionName}
+             , REDUCTION_RATE = #{reductionRate}
+             , MOD_ID = #{memberIdEnc}
+             , MOD_DT = NOW()
+         WHERE CAR_NO = #{carNo}
+           AND MEMBER_ID = #{memberIdEnc}
+    </update>
+    
+    <select id="select_SingleMemberAllReductionInfo" parameterType="commonMap" resultType="commonMap">
+        SELECT Z.REDUCTION_CODE, Z.REDUCTION_NAME, Z.REDUCTION_RATE, Z.REDUCTION_ORDER, Z.APPLY_REDUCT
+          FROM (
+                SELECT A.REDUCTION_CODE, PR.REDUCTION_NAME, PR.REDUCTION_RATE, PR.REDUCTION_ORDER, PR.ADDR_CHK_YN, PR.REDUCTION_GUBN
+                     , CASE WHEN PR.ADDR_CHK_YN = 'Y' AND MI.GUGUN = PI.GUGUN THEN 'Y'
+                            WHEN PR.ADDR_CHK_YN = 'N' THEN 'Y'
+                            ELSE 'N'
+                        END AS APPLY_REDUCT
+                  FROM (
+                          SELECT REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+                            FROM T_MEMBER_REDUCTION
+                           WHERE MEMBER_ID = #{memberIdEnc}
+                           UNION
+                          SELECT REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+                            FROM T_CAR_REDUCTION
+                           WHERE MEMBER_ID = #{memberIdEnc}
+                             AND CAR_NO = #{carNumber}
+                       ) A
+                 INNER JOIN T_REDUCTION_INFO RI
+                    ON A.REDUCTION_CODE = RI.REDUCTION_CODE
+                 INNER JOIN T_PARKING_REDUCTION PR
+                    ON RI.REDUCTION_CODE = PR.REDUCTION_CODE
+                 INNER JOIN T_PARKING_INFO PI
+                    ON PR.PARKING_NO = PI.PARKING_NO
+                 INNER JOIN T_MEMBER_INFO MI
+                    ON A.MEMBER_ID = MI.MEMBER_ID
+                 WHERE PR.PARKING_NO = #{parkingAreaCode}
+                   AND A.RED_EXP_DATE >= DATE_FORMAT(NOW(), '%Y%m%d')
+               ) Z
+         WHERE Z.APPLY_REDUCT = 'Y'
+         ORDER BY Z.REDUCTION_ORDER
+    </select>
+    
+    <insert id="insert_AutoPayApiHistory">
+        INSERT INTO T_AUTOPAY_API_HISTORY (
+            REG_API_CODE
+          , CAR_NUMBER_RECV
+          , WALLET_FREE_YN
+          , SERVICE_KEY
+          , PARKING_AREA_CODE
+          , ENTER_DT
+          , REDUCE_CODE
+          , REDUCE_NM
+          , REDUCE_RATE
+          , RESULT_CODE
+          , RESULT_MSG
+          , API_CALL_DT
+          , RESULT_JSON
+          , OCCUR_DT
+          , ERR_MSG
+          , REG_ID
+          , REG_DT
+          , API_RECV_DT
+          , SUCCESS_VALUE
+        ) VALUES (
+            #{regApiCode}
+          , #{carNumber}
+          , #{walletFreeYN}
+          , #{serviceKey}
+          , #{parkingAreaCode}
+          , #{enterDt}
+          , #{reduceCode}
+          , #{reduceNm}
+          , #{reduceRate}
+          , #{resultCode}
+          , #{resultMsg}
+          , #{apiCallDt}
+          , #{resultJson}
+          , #{occurDt}
+          , #{errMsg}
+          , #{memberIdEnc}
+          , NOW()
+          , #{apiRecvDt}
+          , #{isSuccess}
+        )
+    </insert>
+    
+    <!-- 카드 리스트 조회 -->
+    <select id="select_cardList" parameterType="commonMap" resultType="commonMap">
+            SELECT A.CREDIT_CODE, A.CREDIT_ALIAS, A.CREDIT_NO, A.CREDIT_NO2, A.CREDIT_NO3, A.CREDIT_NO4
+                 , A.CREDIT_EXP_DATE, A.REP_YN, A.AUTO_PAY_YN
+              FROM T_MEMBER_CREDIT A
+              LEFT OUTER JOIN T_SYS_COMCODE B
+                ON A.CREDIT_COMP_PARENT = B.PARENT_CODE_ID
+               AND A.CREDIT_COMP = B.CODE_ID
+             WHERE A.MEMBER_ID = #{memberId}
+             ORDER BY A.REP_YN DESC, A.REG_DT DESC
+    </select>
+    
+    <!-- 같은 차량이 비회원으로 등록된 경우 비회원의 정보를 회원 정보로 업데이트 처리. 현재 자동결제여부를 pay_yn 에 반영함 -->
+    <update id="update_CopyCarStatusFromUnknownInfo">
+      INSERT INTO T_CAR_STATUS (
+             CAR_NO, MEMBER_ID, PARKING_NO, INOUT_STATUS, AUTO_PAY_GUBN
+           , HISTORY_CODE, PAY_YN, REDUCTION_CODE, REDUCTION_RATE, REDUCTION_NAME
+      )
+      SELECT CAR_NO, #{memberIdEnc} AS MEMBER_ID, PARKING_NO, INOUT_STATUS
+          , (SELECT IFNULL(AUTO_PAY_GUBN, 'N') FROM T_MEMBER_INFO WHERE MEMBER_ID = #{memberIdEnc})
+          , HISTORY_CODE
+          , (SELECT IFNULL(AUTO_PAY_GUBN, 'N') FROM T_MEMBER_INFO WHERE MEMBER_ID = #{memberIdEnc})
+          , REDUCTION_CODE, REDUCTION_RATE, REDUCTION_NAME
+        FROM T_CAR_STATUS
+       WHERE CAR_NO = #{carNo}
+         AND MEMBER_ID = 'uQt6VM2fqiD5T//ThHID4w=='
+          ON DUPLICATE KEY UPDATE
+             PARKING_NO = VALUES(PARKING_NO)
+           , INOUT_STATUS = VALUES(INOUT_STATUS)
+           , AUTO_PAY_GUBN = VALUES(AUTO_PAY_GUBN)
+           , HISTORY_CODE = VALUES(HISTORY_CODE)
+           , PAY_YN = VALUES(PAY_YN)
+           , REDUCTION_CODE = VALUES(REDUCTION_CODE)
+           , REDUCTION_RATE = VALUES(REDUCTION_RATE)
+           , REDUCTION_NAME = VALUES(REDUCTION_NAME)
+    </update>
+    
+    <!-- 해당 차량이 최초 입차하는 차량인지 확인 -->
+    <select id="select_checkIsFirstEnter" parameterType="commonMap" resultType="commonMap">
+        SELECT CAR_NO
+          FROM T_CAR_STATUS
+         WHERE CAR_NO = #{carNo}
+           AND MEMBER_ID = #{memberIdEnc}
+           AND INOUT_STATUS IS NULL
+    </select>
+
+    <!-- 사용자의 모든 감면에 대한 비율의 목록과 무료 시간 등을 조회 (관리자) -->
+    <select id="select_memberAllReductionRateList" parameterType="commonMap" resultType="commonMap">
+        SELECT W.REDUCTION_CODE, W.REDUCTION_RATE, W.FREE_HOUR, W.ADDR_CHK_YN, W.PARKING_GUGUN, W.MEMBER_GUGUN
+             , W.REDUCTION_ORDER, W.REDUCTION_NAME, W.MAX_RIDING_CNT, W.RIDING_CNT, W.MEMBER_ID
+             , W.CAR_TYPE, W.CAR_TYPE_APPLYABLE, W.RIDING_CNT_APPLYABLE, W.APPLY_CAR_KIND
+             , W.IS_BUSINESS_CAR, W.BUSINESS_CAR_APPLYABLE
+             , W.REDUCTION_GROUP_ORDER, W.MIN_ORDER, W.REDUCTION_ADDR_CHK
+          FROM (
+                SELECT Q.REDUCTION_CODE, Q.REDUCTION_RATE, Q.FREE_HOUR, Q.ADDR_CHK_YN, Q.PARKING_GUGUN, Q.MEMBER_GUGUN
+                     , Q.REDUCTION_ORDER, Q.REDUCTION_NAME, Q.MAX_RIDING_CNT, Q.RIDING_CNT, Q.MEMBER_ID
+                     , Q.CAR_TYPE, Q.CAR_TYPE_APPLYABLE, Q.RIDING_CNT_APPLYABLE, Q.APPLY_CAR_KIND
+                     , Q.IS_BUSINESS_CAR, Q.BUSINESS_CAR_APPLYABLE
+                     , Q.REDUCTION_GROUP_ORDER
+                     , MIN(TRUNCATE(Q.REDUCTION_GROUP_ORDER / 10, 0)) OVER(ORDER BY Q.REDUCTION_GROUP_ORDER) AS MIN_ORDER
+                     , Q.REDUCTION_ADDR_CHK
+                  FROM (
+                        SELECT Z.REDUCTION_CODE, Z.REDUCTION_RATE, Z.FREE_HOUR, Z.ADDR_CHK_YN, Z.GUGUN AS PARKING_GUGUN
+                             , Z.REDUCTION_ORDER, Z.REDUCTION_NAME, Z.MAX_RIDING_CNT, CI.RIDING_CNT, Z.MEMBER_ID
+                             , CI.CAR_TYPE, Z.APPLY_CAR_KIND
+                             , CASE WHEN Z.APPLY_RIDING_CNT = 'RC001' THEN IFNULL(C.CODE_NAME2, 'N')
+                                    ELSE 'Y'
+                                END AS CAR_TYPE_APPLYABLE
+                             , IFNULL(CI.IS_BUSINESS_CAR, 'N') AS IS_BUSINESS_CAR
+                             , CASE WHEN Z.APPLY_CAR_KIND = 'CK001' AND IFNULL(CI.IS_BUSINESS_CAR, 'N') = 'N' THEN 'Y'
+                                    WHEN Z.APPLY_CAR_KIND = 'CK002' AND IFNULL(CI.IS_BUSINESS_CAR, 'N') = 'Y' THEN 'Y'
+                                    WHEN Z.APPLY_CAR_KIND = 'CK003' THEN 'Y'
+                                    ELSE 'N'
+                                END AS BUSINESS_CAR_APPLYABLE
+                             , CASE WHEN Z.APPLY_RIDING_CNT = 'RC001' THEN
+                                         CASE WHEN IFNULL(C.CODE_NAME2, 'N') = 'Y'
+                                              <![CDATA[THEN CASE WHEN IFNULL(Z.MAX_RIDING_CNT, 0) > 0 AND IFNULL(CI.RIDING_CNT, 0) > 0 AND IFNULL(CI.RIDING_CNT, 0) <= IFNULL(Z.MAX_RIDING_CNT, 0) THEN 'Y' ELSE 'N' END]]>
+                                              ELSE 'N' END
+                                    ELSE 'Y' END AS RIDING_CNT_APPLYABLE
+                             , Z.REDUCTION_GROUP_ORDER
+                             , MI.GUGUN AS MEMBER_GUGUN
+                             , CASE WHEN Z.ADDR_CHK_YN = 'N' THEN 'Y'
+                                    WHEN Z.ADDR_CHK_YN = 'Y' AND Z.GUGUN = MI.GUGUN THEN 'Y'
+                                    ELSE 'N'
+                                END AS REDUCTION_ADDR_CHK
+                          FROM (
+                                SELECT MR.MEMBER_ID, MR.REDUCTION_CODE, R.REDUCTION_RATE, IFNULL(R.FREE_HOUR, 0) AS FREE_HOUR, IFNULL(R.ADDR_CHK_YN, '') AS ADDR_CHK_YN, P.GUGUN
+                                     , R.REDUCTION_ORDER, R.REDUCTION_NAME, R.APPLY_CAR_KIND, IFNULL(O.MAX_RIDING_CNT, -1) AS MAX_RIDING_CNT
+                                     , R.APPLY_RIDING_CNT, R.REDUCTION_GROUP_ORDER
+                                  FROM T_MEMBER_REDUCTION MR
+                                 INNER JOIN T_PARKING_REDUCTION R
+                                    ON MR.REDUCTION_CODE = R.REDUCTION_CODE
+                                 INNER JOIN T_PARKING_INFO P
+                                    ON R.PARKING_NO = P.PARKING_NO
+                                 INNER JOIN T_SYS_OPTION O
+                                    ON 1=1
+                                 WHERE MR.MEMBER_ID = #{memberIdEnc}
+                                   AND MR.RED_EXP_DATE >= DATE_FORMAT(NOW(), '%Y%m%d')
+                                   AND MR.CONFIRM_YN = 'Y'
+                                   AND R.PARKING_NO = #{parkingNo}
+                                   AND P.USE_YN = 'Y'
+                                
+                                 UNION ALL
+                                
+                                SELECT CR.MEMBER_ID, CR.REDUCTION_CODE, R.REDUCTION_RATE, IFNULL(R.FREE_HOUR, 0) AS FREE_HOUR, IFNULL(R.ADDR_CHK_YN, '') AS ADDR_CHK_YN, P.GUGUN
+                                     , R.REDUCTION_ORDER, R.REDUCTION_NAME, R.APPLY_CAR_KIND, IFNULL(O.MAX_RIDING_CNT, -1) AS MAX_RIDING_CNT
+                                     , R.APPLY_RIDING_CNT, R.REDUCTION_GROUP_ORDER
+                                  FROM T_CAR_REDUCTION CR
+                                 INNER JOIN T_PARKING_REDUCTION R
+                                    ON CR.REDUCTION_CODE = R.REDUCTION_CODE
+                                 INNER JOIN T_PARKING_INFO P
+                                    ON R.PARKING_NO = P.PARKING_NO
+                                 INNER JOIN T_SYS_OPTION O
+                                    ON 1=1
+                                 WHERE CR.MEMBER_ID = #{memberIdEnc}
+                                   AND CR.CAR_NO = #{carNo}
+                                   AND CR.CONFIRM_YN = 'Y'
+                                   AND R.PARKING_NO = #{parkingNo}
+                                   AND CR.RED_EXP_DATE >= DATE_FORMAT(NOW(), '%Y%m%d')
+                                   AND P.USE_YN = 'Y'
+                                   AND CR.USE_YN = 'Y'
+                             ) Z
+                         INNER JOIN T_CAR_INFO CI
+                            ON Z.MEMBER_ID = CI.MEMBER_ID
+                           AND CI.CAR_NO = #{carNo}
+                         INNER JOIN T_MEMBER_INFO MI
+                            ON Z.MEMBER_ID = MI.MEMBER_ID
+                          LEFT OUTER JOIN T_SYS_COMCODE C
+                            ON CI.CAR_TYPE_PARENT = C.PARENT_CODE_ID
+                           AND CI.CAR_TYPE = C.CODE_ID
+                     ) Q
+                 WHERE Q.RIDING_CNT_APPLYABLE = 'Y'
+                   AND Q.CAR_TYPE_APPLYABLE = 'Y'
+                   AND Q.BUSINESS_CAR_APPLYABLE = 'Y'
+                   AND Q.REDUCTION_ADDR_CHK = 'Y'
+               ) W
+         WHERE W.MIN_ORDER = TRUNCATE(W.REDUCTION_GROUP_ORDER / 10, 0)
+         ORDER BY W.REDUCTION_GROUP_ORDER ASC, W.REDUCTION_ORDER ASC
+    </select>
+    
+    <!-- 주차면수 api 히스토리 추가 -->
+    <insert id="insert_ParkingCountApiHistory">
+        INSERT INTO T_PARKCNT_API_HISTORY (
+            PARKCNT_API_CODE
+          , PARKING_NO
+          , CALL_FROM
+          , CALL_URL
+          , STD_DT
+          , IS_UPDATED
+          , API_REQUEST_DT
+          , RESULT_CODE
+          , RESULT_MSG
+          , RESULT_JSON
+          , ERR_MSG
+          , API_RECV_DT
+          , REG_DT
+        ) VALUES (
+            #{parkcntApiCode}
+          , #{parkingNo}
+          , #{callFrom}
+          , #{callUrl}
+          , #{stdDt}
+          , #{isUpdated}
+          , #{apiRequestDt}
+          , #{resultCode}
+          , #{resultMsg}
+          , #{resultJson}
+          , #{errMsg}
+          , #{apiRecvDt}
+          , NOW()
+        )
+    </insert>
+    
+    <!-- 주차면수 관련 옵션 조회와 주차장이 유효한지를 같이 체크 -->
+    <select id="select_ParkingCountApiHistoryOption" parameterType="commonMap" resultType="commonMap">
+        SELECT IFNULL(P.API_URL, '') AS PARKCNT_API_URL
+             , O.PARKCNT_ENTER_USE_YN, O.PARKCNT_OUT_USE_YN, O.PARKCNT_CRONTAB_USE_YN, O.PARKCNT_CRONTAB_TIME
+             , O.PARKCNT_API_TRY_CNT, IFNULL(C.CODE_ID, 'X') AS MATCH_CODE_ID, IFNULL(C.CODE_NAME2, 'X') AS MATCH_TYPE
+             , CASE WHEN C.CODE_NAME2 = 'IN'  THEN CASE WHEN O.PARKCNT_ENTER_USE_YN = 'Y' THEN 'Y' ELSE 'N' END
+                    WHEN C.CODE_NAME2 = 'OUT' THEN CASE WHEN O.PARKCNT_OUT_USE_YN = 'Y' THEN 'Y' ELSE 'N' END
+                    WHEN C.CODE_NAME2 = 'CRONTAB' THEN CASE WHEN O.PARKCNT_CRONTAB_USE_YN = 'Y' THEN 'Y' ELSE 'N' END
+                    ELSE 'N'
+                END AS IS_CONTINUE
+             , P.API_VER_GUBN, P.USE_YN AS PARKING_USE_YN
+          FROM T_PARKING_INFO P
+         INNER JOIN T_SYS_OPTION O
+            ON 1 = 1
+          LEFT OUTER JOIN (
+                    SELECT CODE_ID, CODE_NAME2
+                         , CASE WHEN CODE_ID = #{callFrom} THEN 'Y' ELSE 'N' END AS IS_MATCH
+                      FROM T_SYS_COMCODE
+                     WHERE PARENT_CODE_ID = 'PARKCNT_CALL_FROM'
+                     ORDER BY CODE_ORDER
+             ) C
+            ON C.IS_MATCH = 'Y'
+         WHERE P.PARKING_NO = #{parkingNo}
+           AND P.USE_YN = 'Y'
+    </select>
+    
+    <!-- 파라미터 시간(checkDt)과 DB의 가장 최근 API 수신 시간의 차이를 확인. 파라미터 시간이 크면(Y) 업데이트 가능, 아니면 업데이트 불가 -->
+    <select id="select_ParkingCountApiHistoryTimeCheck" parameterType="commonMap" resultType="commonMap">
+        SELECT <![CDATA[ CASE WHEN (
+                            EXTRACT(DAY FROM Z.DIFF_TIME) * 24 * 60 * 60 + EXTRACT(HOUR FROM Z.DIFF_TIME) * 60 * 60 +
+                            EXTRACT(MINUTE FROM Z.DIFF_TIME) * 60 + EXTRACT(SECOND FROM Z.DIFF_TIME)
+                         ) > 0 ]]>
+                    THEN 'Y'
+                    ELSE 'N'
+                END AS CAN_BE_UPDATED
+          FROM (
+                SELECT (
+                            STR_TO_DATE(#{stdDt}, '%Y/%m%d %H:%i:%s.%f') - 
+                            IFNULL(MAX(LAST_PARKCNT_MOD_DT), STR_TO_DATE('1980/01/01 00:00:00.000000', '%Y/%m%d %H:%i:%s.%f'))
+                       ) AS DIFF_TIME
+                  FROM T_PARKING_INFO
+                 WHERE PARKING_NO = #{parkingNo}
+                   AND USE_YN = 'Y'
+               ) Z
+    </select>
+    
+    <!-- 주차면수와 기준일자 업데이트 -->
+    <update id="update_ParkingCountOnly">
+        UPDATE T_PARKING_INFO
+           SET LAST_PARKCNT_MOD_DT = #{lastParkcntModDt}
+             , PARKING_SPOT = #{totalParkingCount}
+             , PARKING_SPOT_NOW = #{nowParkingCount}
+             , MOD_ID = 'twtY4FJLouwHo6jEPGHFgA=='
+             , MOD_DT = NOW()
+         WHERE PARKING_NO = #{parkingNo}
+    </update>
+    
+    <!-- 사용여부가 Y인 주차장 목록 -->
+    <select id="select_UsableParkingLotList" parameterType="commonMap" resultType="commonMap">
+        SELECT PARKING_NO
+          FROM T_PARKING_INFO
+         WHERE USE_YN = 'Y'
+         ORDER BY PARKING_NO
+    </select>
+    
+    <!-- Crontab 실행 여부 확인 -->
+    <select id="select_CheckCrontabRunnable" parameterType="commonMap" resultType="commonMap">
+        SELECT PARKCNT_CRONTAB_USE_YN
+          FROM T_SYS_OPTION
+    </select>
+</mapper>

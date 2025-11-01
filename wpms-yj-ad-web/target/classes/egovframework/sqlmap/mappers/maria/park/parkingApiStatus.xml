@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingApiStatus">
+	
+	<select id="select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN A.RESULT_CODE = '00' THEN '성공' ELSE '실패' END RESULT_GUBN
+			 , DATE_FORMAT(A.MDFCN_DT, '%Y-%m-%d %H:%i:%s') MDFCN_DT
+			 , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') REG_DT
+			 , DATE_FORMAT(A.RECEIVE_DT, '%Y-%m-%d %H:%i:%s') RECEIVE_DT
+			 , A.RESULT_CODE
+			 , A.RESULT_MSG
+			 , B.PROVIDED_NAME
+			 , A.SERVICE_KEY
+			 , A.API_CODE
+			 , IFNULL(A.PARKING_NO, '전체') PARKING_NO
+		  FROM T_PARKING_INFO_API_HISTORY A
+		  LEFT OUTER JOIN T_API_KEY_INFO B
+		    ON A.SERVICE_KEY = B.SERVICE_KEY
+		 WHERE 1=1
+		   <![CDATA[		   
+		   AND DATE_FORMAT(A.REG_DT, '%Y%m%d') >= STR_TO_DATE(#{startDate}, '%Y%m%d')
+		   AND DATE_FORMAT(A.REG_DT, '%Y%m%d') <= STR_TO_DATE(#{endDate}, '%Y%m%d')+ INTERVAL 1 DAY ]]>
+	<choose>
+		<when test ='kResultGubn == "Y"'>
+			AND A.RESULT_CODE = 00
+		</when>
+		<when test ='kResultGubn == "N"'>
+			AND A.RESULT_CODE != '00'
+		</when>
+	</choose>
+	<if test="kProvidedName neq null and kProvidedName neq ''">
+		AND B.PROVIDED_NAME LIKE '%${kProvidedName}%'
+	</if>
+		 ORDER BY A.REG_DT DESC
+	</select>
+
+</mapper>

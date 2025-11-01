@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingInfoList">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT PARKING_NO AS VALUE
+		     , PARKING_NAME AS TEXT
+	  	  FROM T_PARKING_INFO
+	</select>
+</mapper>

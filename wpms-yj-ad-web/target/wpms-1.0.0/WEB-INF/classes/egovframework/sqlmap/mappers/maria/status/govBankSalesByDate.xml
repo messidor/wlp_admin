@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.govBankSalesByDate">
+
+	<select id="select_govBankSalesList" parameterType="commonMap" resultType="commonMap">
+		SELECT J.P_GOV_NAME, PI.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		     IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0) AS `d${item.kDayArr}`
+		     </foreach>
+		  FROM T_PARKING_GOV_INFO J
+		 INNER JOIN T_PARKING_INFO PI
+		    ON PI.P_GOV_CODE = J.P_GOV_CODE
+		  LEFT OUTER JOIN
+		  ( SELECT X.PAY_YEAR
+					  , X.PAY_MONTH
+					  , X.PAY_DAY
+					  , SUM(X.PARKING_PRICE) AS TOTAL
+					  , X.P_GOV_CODE
+					  , X.P_GOV_NAME
+					  , X.PARKING_NAME
+					  , X.PARKING_NO
+		           FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+							   , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+							   , DATE_FORMAT(A.PAY_DATE, '%d') PAY_DAY
+							   , B.PARKING_PRICE
+							   , D.P_GOV_CODE
+							   , D.P_GOV_NAME
+							   , PI.PARKING_NAME
+							   , PI.PARKING_NO
+							FROM T_PARKING_PAY A
+						   INNER JOIN T_PARKING_CHARGE B
+							  ON A.PAY_CODE = B.PAY_CODE
+						   INNER JOIN T_PARKING_INFO C
+							  ON B.PARKING_NO = C.PARKING_NO
+						   INNER JOIN T_PARKING_GOV_INFO D
+						      ON C.P_GOV_CODE = D.P_GOV_CODE
+						   INNER JOIN T_PARKING_INFO PI
+						      ON B.PARKING_NO = PI.PARKING_NO
+						    WHERE 1=1
+							  AND NOT EXISTS (
+				          			SELECT 1
+				          	 		  FROM (
+				           	 		  		 SELECT PAY_CODE, COUNT(*)
+				         				       FROM T_PARKING_PAY
+				         				      WHERE 1=1
+				         				        AND DATE_FORMAT(PAY_DATE, '%Y') = #{kUseYear}
+												AND DATE_FORMAT(PAY_DATE, '%m') = #{kUseMonth}
+				         				      GROUP BY PAY_CODE
+				         				     HAVING COUNT(*) <![CDATA[ > ]]> 1
+				          	 		     ) Q
+				          	 		 WHERE Q.PAY_CODE = A.PAY_CODE
+          		     		    ) 
+          		     		  AND PI.USE_YN = 'Y'
+					  ) X
+				  WHERE X.PAY_YEAR = #{kUseYear}
+				    AND X.PAY_MONTH = #{kUseMonth}
+				  GROUP BY X.PAY_YEAR, X.PAY_MONTH, X.PAY_DAY, X.P_GOV_CODE, X.P_GOV_NAME, X.PARKING_NO, X.PARKING_NAME
+				) T
+			   ON T.P_GOV_CODE = J.P_GOV_CODE		
+			  AND T.PARKING_NO = PI.PARKING_NO	
+ 			WHERE 1=1
+ 			  AND PI.USE_YN = 'Y'
+		<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+			AND J.P_GOV_CODE = #{hParkingGovCode}
+		</if>
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+			AND PI.PARKING_NO = #{kParkingNo}
+		</if>
+		    GROUP BY PI.PARKING_NO, PI.PARKING_NAME, J.P_GOV_CODE, J.P_GOV_NAME 
+		    ORDER BY J.P_GOV_CODE, PI.PARKING_NAME ASC
+	</select>
+	
+	<select id="select_govBankSalesExcel" parameterType="commonMap" resultType="commonMap">
+		SELECT Y.*
+		  FROM (
+				SELECT J.P_GOV_NAME, J.P_GOV_CODE, PI.PARKING_NAME, PI.PARKING_NO,
+					<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+				     FORMAT(IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0), 0) AS `d${item.kDayArr}`
+				     </foreach>
+				  FROM T_PARKING_GOV_INFO J
+		 		 INNER JOIN T_PARKING_INFO PI
+		    		ON PI.P_GOV_CODE = J.P_GOV_CODE 
+		          LEFT OUTER JOIN	  
+				  ( SELECT X.PAY_YEAR
+							  , X.PAY_MONTH
+							  , X.PAY_DAY
+							  , SUM(X.PARKING_PRICE) AS TOTAL
+							  , X.P_GOV_CODE
+							  , X.P_GOV_NAME
+							  , X.PARKING_NAME
+							  , X.PARKING_NO
+				           FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+									   , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+									   , DATE_FORMAT(A.PAY_DATE, '%d') PAY_DAY
+									   , B.PARKING_PRICE
+									   , D.P_GOV_CODE
+									   , D.P_GOV_NAME
+									   , PI.PARKING_NO
+									   , PI.PARKING_NAME
+									FROM T_PARKING_PAY A
+								   INNER JOIN T_PARKING_CHARGE B
+									  ON A.PAY_CODE = B.PAY_CODE
+								   INNER JOIN T_PARKING_INFO C
+									  ON B.PARKING_NO = C.PARKING_NO
+								   INNER JOIN T_PARKING_GOV_INFO D
+								      ON C.P_GOV_CODE = D.P_GOV_CODE
+								   INNER JOIN T_PARKING_INFO PI
+								      ON B.PARKING_NO = PI.PARKING_NO
+								    WHERE 1=1
+									  AND NOT EXISTS (
+						          			SELECT 1
+						          	 		  FROM (
+						           	 		  		 SELECT PAY_CODE, COUNT(*)
+						         				       FROM T_PARKING_PAY
+						         				      WHERE 1=1
+						         				        AND DATE_FORMAT(PAY_DATE, '%Y') = #{kUseYear}
+														AND DATE_FORMAT(PAY_DATE, '%m') = #{kUseMonth}
+						         				      GROUP BY PAY_CODE
+						         				     HAVING COUNT(*) <![CDATA[ > ]]> 1
+						          	 		     ) Q
+						          	 		 WHERE Q.PAY_CODE = A.PAY_CODE
+		          		     		    ) 
+		          		     		  AND C.USE_YN = 'Y'
+							  ) X
+						  WHERE X.PAY_YEAR = #{kUseYear}
+						    AND X.PAY_MONTH = #{kUseMonth}
+						  GROUP BY X.PAY_YEAR, X.PAY_MONTH, X.PAY_DAY, X.P_GOV_CODE, X.P_GOV_NAME, X.PARKING_NO, X.PARKING_NAME
+						) T
+					   ON T.P_GOV_CODE = J.P_GOV_CODE
+			 		  AND T.PARKING_NO = PI.PARKING_NO
+					WHERE 1=1
+					  AND PI.USE_YN = 'Y'
+				<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+					AND J.P_GOV_CODE = #{hParkingGovCode}
+				</if>
+				<if test="hParkingNo neq null and hParkingNo neq ''" >
+					AND PI.PARKING_NO = #{hParkingNo}
+				</if>
+				    GROUP BY PI.PARKING_NO, PI.PARKING_NAME, J.P_GOV_CODE, J.P_GOV_NAME 
+				    
+				    UNION
+				    
+				   SELECT '' AS P_GOV_NAME, '' AS P_GOV_CODE, '합계' AS PARKING_NAME, '' AS PARKING_NO,
+					<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+				     FORMAT(IFNULL(SUM(CASE WHEN T.PAY_DAY = ${item.kDayArr} THEN T.TOTAL END), 0), 0) AS `d${item.kDayArr}`
+				     </foreach>
+				  FROM ( SELECT X.PAY_YEAR
+							  , X.PAY_MONTH
+							  , X.PAY_DAY
+							  , SUM(X.PARKING_PRICE) AS TOTAL
+				           FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+									   , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+									   , DATE_FORMAT(A.PAY_DATE, '%d') PAY_DAY
+									   , B.PARKING_PRICE
+									FROM T_PARKING_PAY A
+								   INNER JOIN T_PARKING_CHARGE B
+									  ON A.PAY_CODE = B.PAY_CODE
+								   INNER JOIN T_PARKING_INFO C
+									  ON B.PARKING_NO = C.PARKING_NO
+								   INNER JOIN T_PARKING_GOV_INFO D
+								      ON C.P_GOV_CODE = D.P_GOV_CODE
+								   INNER JOIN T_PARKING_INFO PI
+									  ON B.PARKING_NO = PI.PARKING_NO
+								   WHERE 1=1
+								     AND PI.USE_YN = 'Y'
+								<if test="hParkingGovCode neq null and hParkingGovCode neq ''" >
+									AND D.P_GOV_CODE = #{hParkingGovCode}
+								</if>
+								<if test="hParkingNo neq null and hParkingNo neq ''" >
+									AND PI.PARKING_NO = #{hParkingNo}
+								</if>
+									  AND NOT EXISTS (
+						          			SELECT 1
+						          	 		  FROM (
+						           	 		  		 SELECT PAY_CODE, COUNT(*)
+						         				       FROM T_PARKING_PAY
+						         				      WHERE 1=1
+						         				        AND DATE_FORMAT(PAY_DATE, '%Y') = #{kUseYear}
+														AND DATE_FORMAT(PAY_DATE, '%m') = #{kUseMonth}
+						         				      GROUP BY PAY_CODE
+						         				     HAVING COUNT(*) <![CDATA[ > ]]> 1
+						          	 		     ) Q
+						          	 		 WHERE Q.PAY_CODE = A.PAY_CODE
+		          		     		    ) 
+		          		     		  AND C.USE_YN = 'Y'
+							  ) X
+						  WHERE X.PAY_YEAR = #{kUseYear}
+						    AND X.PAY_MONTH = #{kUseMonth}
+						  GROUP BY X.PAY_YEAR, X.PAY_MONTH, X.PAY_DAY
+						) T
+				) Y
+		    ORDER BY Y.P_GOV_CODE='', Y.P_GOV_CODE, Y.PARKING_NAME ASC
+	</select>
+</mapper>

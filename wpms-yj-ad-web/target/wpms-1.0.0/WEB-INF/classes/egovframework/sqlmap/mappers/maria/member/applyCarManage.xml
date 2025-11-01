@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.applyCarManage">
+
+	<select id="select_list" parameterType="commonMap"	resultType="commonMap">
+		SELECT AC.APPLY_CODE, AC.MEMBER_ID, MI.MEMBER_NAME
+		     , AC.CAR_ALIAS, AC.CAR_NO
+		     , DATE_FORMAT(AC.REG_DT, '%Y-%m-%d %H:%i:%s') AS APPLY_DT
+		     , A.CODE_NAME1 AS CONFIRM_YN
+		     , IF(AC.CONFIRM_ID IS NOT NULL, IFNULL(UI.USER_NAME, MO.MEMBER_NAME), '') AS CONFIRM_NAME
+		     , DATE_FORMAT(AC.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') AS CONFIRM_DT
+		     , MI.KAKAO_YN, CY.CONFIRM_CNT, IFNULL(CIY.H_SEQ, 0) H_SEQ
+		     , AC.CONFIRM_GUBN
+		     , SC.CODE_NAME1 AS DEL_YN_NAME
+		     , AC.DEL_YN
+		  FROM T_APPLY_MEMBER_CAR AC
+		  LEFT OUTER JOIN T_MEMBER_INFO MI
+		    ON AC.MEMBER_ID = MI.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE A
+		    ON AC.CONFIRM_GUBN_PARENT = A.PARENT_CODE_ID
+		   AND AC.CONFIRM_GUBN = A.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON AC.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN (
+		  					SELECT CAR_NO, COUNT(*) CONFIRM_CNT
+		                      FROM T_CAR_INFO
+		                    GROUP BY CAR_NO
+		     ) CY
+		    ON AC.CAR_NO = CY.CAR_NO
+		  LEFT OUTER JOIN T_CAR_INFO_HISTORY CIY
+		    ON AC.CAR_NO = CIY.CAR_NO
+		   AND AC.APPLY_CODE = CIY.APPLY_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE SC
+		    ON AC.DEL_YN_PARENT = SC.PARENT_CODE_ID
+		   AND AC.DEL_YN = SC.CODE_ID
+		  LEFT OUTER JOIN T_MEMBER_INFO MO
+		    ON AC.CONFIRM_ID = MO.MEMBER_ID
+		 WHERE MI.CONFIRM_YN = 'Y'
+		   
+	    <if test='kConfirmYn != "N" and kConfirmYn != "C"' >
+		   <![CDATA[AND AC.REG_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+		   <![CDATA[AND AC.REG_DT <= (STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY) ]]>
+		</if>
+		
+		<if test="kConfirmYn neq null and kConfirmYn neq ''" >
+			AND AC.CONFIRM_GUBN = #{kConfirmYn}
+		</if>
+		
+		<if test="kDelYn neq null and kDelYn neq ''" >
+			AND AC.DEL_YN = #{kDelYn}
+		</if>
+		
+		<if test="kMemberName neq null and kMemberName neq ''" >
+		   AND MI.MEMBER_NAME = #{kMemberName}
+		</if>
+
+		<if test="kCarNum neq null and kCarNum neq ''" >
+		   AND AC.CAR_NO LIKE '%${kCarNum}%'
+		</if>
+		 ORDER BY AC.REG_DT DESC
+	</select>
+
+	<select id="select_carInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT A.CAR_NO, A.CAR_ALIAS, A.REJECT_REASON
+			 , IF(A.CONFIRM_GUBN = 'Y', 'Y', 'N') AS CHECK_VALUE
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_PATH ,F.FILE_NAME , '.' , F.FILE_EXT) END AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) END AS NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) END AS DISP_FILE_NAME
+		     , F.FILE_EXT
+		     , B.MEMBER_NAME, B.MEMBER_ID, B.MEMBER_BIRTH
+		     , A.CONFIRM_GUBN
+		     , IFNULL(R.FILE_REL_KEY, '') AS FILE_REL_KEY
+		     , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+		     , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+		     , A.DEL_YN
+		     , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+		  FROM T_APPLY_MEMBER_CAR A
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+		  LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		  LEFT OUTER JOIN T_MEMBER_INFO B
+		    ON A.MEMBER_ID = B.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+		    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+		   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+		 WHERE A.MEMBER_ID = #{hMemberId}
+		   AND A.APPLY_CODE = #{hApplyCode}
+	</select>
+	
+	<select id="select_approvalCarInfo" parameterType="commonMap" resultType="commonMap">
+		<choose>
+			<when test ='hSeq > 0'>
+				SELECT A.CAR_NO, A.CAR_ALIAS
+				     , B.MEMBER_BIRTH
+				     , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+		     		 , IFNULL(B.MEMBER_ID, '탈퇴한 사용자') AS MEMBER_ID
+		     		 , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+				  FROM T_CAR_INFO_HISTORY A
+				  LEFT OUTER JOIN T_FILE_RELATION R
+				    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+				  LEFT OUTER JOIN T_FILE_INFO F
+				    ON R.FILE_KEY = F.FILE_KEY
+				  LEFT OUTER JOIN T_MEMBER_INFO B
+					ON A.MEMBER_ID = B.MEMBER_ID
+				  LEFT OUTER JOIN T_SYS_COMCODE C1
+				    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+				   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+				 WHERE A.CAR_NO = #{carNo}
+				   AND A.USE_YN = 'Y'
+				   AND A.H_SEQ = #{hSeq}
+			</when>
+			<otherwise>
+				SELECT A.CAR_NO, A.CAR_ALIAS
+					 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_PATH ,F.FILE_NAME , '.' , F.FILE_EXT) END AS FILE_NAME
+					 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) END AS NAME
+					 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) END AS DISP_FILE_NAME
+				     , F.FILE_EXT
+				     , B.MEMBER_BIRTH
+				     , IFNULL(B.MEMBER_NAME, '탈퇴한 사용자') AS MEMBER_NAME
+		     		 , IFNULL(B.MEMBER_ID, '탈퇴한 사용자') AS MEMBER_ID
+				     , IFNULL(R.FILE_REL_KEY, '') AS FILE_REL_KEY
+                     , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+                     , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+                     , C1.CODE_NAME1 AS FRIGHT_CAR_YN
+				  FROM T_CAR_INFO A
+				  LEFT OUTER JOIN T_FILE_RELATION R
+				    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+				  LEFT OUTER JOIN T_FILE_INFO F
+				    ON R.FILE_KEY = F.FILE_KEY
+				  LEFT OUTER JOIN T_MEMBER_INFO B
+					ON A.MEMBER_ID = B.MEMBER_ID  
+				  LEFT OUTER JOIN T_SYS_COMCODE C1
+				    ON A.FRIGHT_CAR_YN_PARENT = C1.PARENT_CODE_ID
+				   AND A.FRIGHT_CAR_YN = C1.CODE_ID
+				 WHERE A.CAR_NO = #{carNo}
+				   AND A.USE_YN = 'Y'
+			</otherwise>
+		</choose>
+		
+	</select>
+	
+	<select id="select_applyCarInfo" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(CI.CAR_NO) AS CNT
+		  FROM T_MEMBER_INFO MI
+		 INNER JOIN T_CAR_INFO CI
+		    ON MI.MEMBER_ID = CI.MEMBER_ID
+		 WHERE MI.CONFIRM_YN = 'Y'
+		   AND CI.CAR_NO = REPLACE(#{carNo}, ' ', '')
+	</select>
+	
+	<select id="select_car_info" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) CAR_OVERLAP_CNT
+		  FROM T_CAR_INFO
+		 WHERE CAR_NO = #{grdCarNo}
+		   AND USE_YN = 'Y'
+	</select>
+	
+	<select id="select_reg_gubn" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) REG_CNT
+		  FROM T_APPLY_MEMBER_CAR
+		 WHERE CAR_NO = #{grdCarNo}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND APPLY_CODE = #{hApplyCode}
+		   AND CONFIRM_GUBN = #{confirmGubn}
+		   AND DEL_YN = #{delYn}
+	</select>
+	
+	<update id="update_applyCar">
+		UPDATE T_APPLY_MEMBER_CAR
+		   SET CONFIRM_GUBN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND APPLY_CODE = #{hApplyCode}
+		   AND CAR_NO = #{grdCarNo}
+	</update> 
+
+	<update id="update_NonApplyCar">
+		UPDATE T_APPLY_MEMBER_CAR
+		   SET CONFIRM_GUBN = 'C'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , REJECT_REASON = #{grdRejectReason}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND APPLY_CODE = #{hApplyCode}
+		   AND CAR_NO = #{grdCarNo}
+	</update>
+	
+	<delete id="delete_car_reduction">
+		DELETE FROM T_CAR_REDUCTION
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND CAR_NO = #{grdCarNo}
+	</delete>
+
+	<insert id="insert_carInfo">
+		INSERT INTO T_CAR_INFO (
+		            MEMBER_ID, CAR_NO, CAR_ALIAS
+		          , FILE_REL_KEY, USE_YN_P, USE_YN
+		          , REG_ID, REG_DT, MOD_ID, MOD_DT
+	              , CAR_CC, CAR_LENGTH, RIDING_CNT
+	              , CAR_TYPE_PARENT, CAR_TYPE
+	              , FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN
+		          , LOW_PLT_GUBN_PARENT, LOW_PLT_GUBN
+				  , IS_BUSINESS_CAR_PARENT, IS_BUSINESS_CAR
+		          ) SELECT MEMBER_ID, CAR_NO, CAR_ALIAS
+		                 , FILE_REL_KEY, 'USE_YN' USE_YN_P, 'Y' USE_YN
+		                 , #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+		                 , CAR_CC, CAR_LENGTH, RIDING_CNT
+		                 , CAR_TYPE_PARENT, CAR_TYPE
+		                 , FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN
+		                 , LOW_PLT_GUBN_PARENT, LOW_PLT_GUBN
+		                 , 'IS_BUSINESS_CAR', IS_BUSINESS_CAR
+		              FROM T_APPLY_MEMBER_CAR
+		             WHERE MEMBER_ID = #{hMemberId}
+		               AND APPLY_CODE = #{hApplyCode}
+	</insert>
+	
+	<insert id="insert_carStatus">
+		INSERT INTO T_CAR_STATUS (
+            		CAR_NO, MEMBER_ID, INOUT_STATUS_PARENT, INOUT_STATUS
+          	      , AUTO_PAY_GUBN_PARENT, REG_ID, REG_DT
+          		  , MOD_ID, MOD_DT
+          		  ) SELECT CAR_NO, MEMBER_ID, 'PARKING_STATUS', NULL
+                         , 'AUTO_PAY_GUBN', #{userId} REG_ID, NOW() REG_DT
+                   		 , #{userId} MOD_ID, NOW() MOD_DT
+			          FROM T_APPLY_MEMBER_CAR
+			         WHERE MEMBER_ID = #{hMemberId}
+	          	       AND APPLY_CODE = #{hApplyCode}
+	</insert>
+	
+	<update id="update_apply_reduction">
+		UPDATE T_APPLY_CAR_REDUCTION
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE CAR_NO = #{grdCarNo}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND APPLY_CODE = #{hApplyCode}
+	</update>
+	
+	<update id="insert_reduction">
+		INSERT INTO T_CAR_REDUCTION (
+					REDUCTION_CODE, CAR_NO, MEMBER_ID, RED_EXP_DATE
+				  , CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+				  , REG_ID, REG_DT, MOD_ID, MOD_DT
+				  , DEL_YN_PARENT, DEL_YN
+				  , INPUT_GUBN, INPUT_GUBN_PARENT, USE_YN_PARENT, USE_YN
+		          ) SELECT REDUCTION_CODE, CAR_NO, MEMBER_ID, RED_EXP_DATE
+					     , CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+					     , #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+					     , 'DEL_YN' DEL_YN_PARENT, 'N' DEL_YN
+					     , INPUT_GUBN, INPUT_GUBN_PARENT, 'USE_YN' USE_YN_PARENT, 'Y' USE_YN
+					  FROM T_APPLY_CAR_REDUCTION
+					 WHERE MEMBER_ID = #{hMemberId}
+					   AND CAR_NO = #{grdCarNo}
+					   AND APPLY_CODE = #{hApplyCode}
+	</update>
+
+	<delete id="delete_car">
+		DELETE
+		  FROM T_CAR_INFO
+		 WHERE CAR_NO = #{grdCarNo}
+	</delete>
+ 
+	<delete id="delete_carReduction">
+		DELETE
+		  FROM T_CAR_REDUCTION
+		 WHERE CAR_NO = #{grdCarNo}
+	</delete>
+	
+	<select id="select_prevApplyCode" parameterType="commonMap" resultType="commonMap">
+		SELECT APPLY_CODE AS PREV_APPLY_CODE
+		  FROM T_APPLY_MEMBER_CAR
+		 WHERE CAR_NO = #{grdCarNo}
+		   AND CONFIRM_GUBN = 'Y'
+		   AND DEL_YN = 'N'
+	</select>
+	
+	<delete id="delete_applyMemberCar">
+		UPDATE T_APPLY_MEMBER_CAR
+		   SET DEL_YN = 'Y'
+		     , FILE_REL_KEY = ''
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE CAR_NO = #{grdCarNo}
+		   AND APPLY_CODE = #{prevApplyCode}
+	</delete>
+
+	<delete id="delete_carStatus">
+		DELETE
+		  FROM T_CAR_STATUS
+		 WHERE CAR_NO = #{grdCarNo}
+	</delete>
+	
+	<select id="select_hSeq" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(H_SEQ) AS H_SEQ
+		  FROM T_CAR_INFO_HISTORY
+	</select>
+	
+	<insert id="insert_carInfoHistory">
+		INSERT INTO T_CAR_INFO_HISTORY (
+	           MEMBER_ID, CAR_NO, H_SEQ, CAR_ALIAS, CAR_MODEL
+	         , CAR_GUBN_PARENT, CAR_GUBN, FILE_REL_KEY, USE_YN_P, USE_YN
+	         , REG_ID, REG_DT, MOD_ID, MOD_DT, DEL_GUBN_PARENT
+	         , DEL_GUBN, APPLY_CODE, CAR_CC, CAR_LENGTH, RIDING_CNT
+			 , CAR_TYPE_PARENT, CAR_TYPE, FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN, LOW_PLT_GUBN_PARENT
+			 , LOW_PLT_GUBN
+		) SELECT MEMBER_ID, CAR_NO, #{hSeq} AS H_SEQ, CAR_ALIAS, CAR_MODEL
+       		   , CAR_GUBN_PARENT, CAR_GUBN, FILE_REL_KEY, USE_YN_P, USE_YN
+       		   , #{userId} AS REG_ID, NOW() AS REG_DT, #{userId} AS MOD_ID, NOW() AS MOD_DT, 'DEL_GUBN'
+       		   , 'M', #{hApplyCode} AS APPLY_CODE, CAR_CC, CAR_LENGTH, RIDING_CNT
+       		   , CAR_TYPE_PARENT, CAR_TYPE, FRIGHT_CAR_YN_PARENT, FRIGHT_CAR_YN, LOW_PLT_GUBN_PARENT
+	  		   , LOW_PLT_GUBN
+		    FROM T_CAR_INFO
+           WHERE MEMBER_ID = #{approveMemberId}
+             AND CAR_NO = #{grdCarNo}
+	</insert>
+
+	<insert id="insert_reductionHistory">
+		INSERT INTO T_CAR_REDUCTION_HISTORY (
+					REDUCTION_CODE, CAR_NO, MEMBER_ID, H_SEQ
+				  , RED_EXP_DATE, CONFIRM_YN_PARENT, CONFIRM_YN
+				  , CONFIRM_ID, CONFIRM_DT
+				  , REG_ID, REG_DT
+				  , MOD_ID, MOD_DT
+				  , DEL_YN_PARENT, DEL_YN
+		          ) SELECT REDUCTION_CODE, CAR_NO, MEMBER_ID, #{hSeq} AS H_SEQ
+					     , RED_EXP_DATE, CONFIRM_YN_PARENT, CONFIRM_YN
+					     , CONFIRM_ID, CONFIRM_DT
+					     , #{userId} REG_ID, NOW() REG_DT
+					     , #{userId} MOD_ID, NOW() MOD_DT
+					     , DEL_YN_PARENT, DEL_YN
+		  			  FROM T_CAR_REDUCTION
+		 			 WHERE MEMBER_ID = #{approveMemberId}
+		   			   AND CAR_NO = #{grdCarNo}
+					 GROUP BY REDUCTION_CODE, CAR_NO, MEMBER_ID
+					     , RED_EXP_DATE, CONFIRM_YN_PARENT, CONFIRM_YN
+					     , CONFIRM_ID, CONFIRM_DT
+					     , DEL_YN_PARENT, DEL_YN
+	</insert>
+	
+	<select id="select_NonApplyCar" parameterType="commonMap" resultType="commonMap">
+		SELECT DATE_FORMAT(CONFIRM_DT,'%m월 %d일 %H시 %i분') AS CONFIRM_DT
+		  FROM T_APPLY_MEMBER_CAR
+		 WHERE MEMBER_ID = #{hMemberId}
+		   AND APPLY_CODE = #{hApplyCode}
+		   AND CAR_NO = #{grdCarNo}
+	</select>
+
+    <!-- 차량 승인된 사용자가 카드를 등록했는지의 여부를 판단 -->
+    <select id="select_MemberCardCheck" parameterType="commonMap" resultType="commonMap">
+        SELECT CREDIT_CODE
+          FROM T_MEMBER_CREDIT
+         WHERE MEMBER_ID = #{memberIdEnc}
+           AND USE_YN = 'Y'
+    </select>
+</mapper>

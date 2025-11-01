@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.btn">
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT A.BTN_ID, A.BTN_DISP_TYPE, A.BTN_CAPTION, A.BTN_CLASS
+    		 , A.BTN_ICON, A.ICON_LOC, A.USE_YN, B.USER_NAME AS MOD_ID
+    		 , DATE_FORMAT(A.MOD_DT, '%Y-%m-%d %H:%i:%s') MOD_DT 
+		     , '' AS STATE_COL
+		     , 'Y' AS CHECK_VALUE
+		  FROM T_SYS_BTN_INFO A
+		  LEFT OUTER JOIN T_USER_INFO B
+		    ON A.MOD_ID = B.USER_ID
+		 WHERE 1 = 1
+		 
+		<choose>
+			<when test ='kSearchGubn == "A"'>
+				AND A.BTN_ID LIKE '%${kSearchName}%'
+			</when>
+			<when test ='kSearchGubn == "B"'>
+				AND A.BTN_CAPTION LIKE '%${kSearchName}%'
+			</when>
+			<otherwise>
+				AND (A.BTN_ID LIKE '%${kSearchName}%' OR A.BTN_CAPTION LIKE '%${kSearchName}%')
+			</otherwise>
+		</choose>
+		
+		ORDER BY A.BTN_ORDER
+	</select>
+
+	<insert id="insert_btn">
+		INSERT INTO T_SYS_BTN_INFO (
+			BTN_ID, BTN_DISP_TYPE_PARENT, BTN_DISP_TYPE, BTN_CAPTION, BTN_CLASS
+		  , BTN_ICON, ICON_LOC_PARENT, ICON_LOC, LANG_CODE, USE_YN_PARENT
+		  , USE_YN, BTN_ORDER, REG_ID, REG_DT, MOD_ID
+		  , MOD_DT
+		) VALUES (
+			#{grdBtnId}, 'BTN_DISP_TYPE', #{grdBtnDispType}, #{grdBtnCaption}, #{grdBtnClass}
+		  , #{grdBtnIcon}, 'BTN_ICON_LOC', #{grdIconLoc}, NULL, 'USE_YN'
+		  , #{grdUseYn}, NULL, #{userId}, NOW(), #{userId}
+		  , NOW()
+		)				
+	</insert>
+	
+	<update id="update_btn">
+		UPDATE T_SYS_BTN_INFO
+		   SET BTN_DISP_TYPE = #{grdBtnDispType}
+		     , BTN_CAPTION = #{grdBtnCaption}
+		     , BTN_CLASS = #{grdBtnClass}
+		     , BTN_ICON = #{grdBtnIcon}
+		     , ICON_LOC = #{grdIconLoc}
+		     , USE_YN = #{grdUseYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE BTN_ID = #{grdBtnId}
+	</update>
+	
+	<update id="delete_btn">
+		UPDATE T_SYS_BTN_INFO
+		   SET USE_YN = 'N'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE BTN_ID = #{grdBtnId}	
+	</update>
+	
+	<update id="update_btn_order">
+		UPDATE T_SYS_BTN_INFO
+           SET BTN_ORDER = #{index} + 1
+         WHERE BTN_ID = #{grdBtnId}
+	</update>
+	
+</mapper>

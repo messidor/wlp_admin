@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.reductionManage">
+	
+    <select id="select_historySeq" parameterType="commonMap" resultType="commonMap">
+	    SELECT IFNULL(MAX(H_SEQ)+1, 1) AS H_SEQ
+	 	  FROM T_HISTORY_MEMBER_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+	       AND MEMBER_ID = #{hMemberId}
+    </select> 
+	
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT A.MEMBER_ID, MI.MEMBER_NAME, A.RED_EXP_DATE, I.REDUCTION_NAME, A.REDUCTION_CODE
+		     , A.REG_DT APPLY_DT
+		     , IF(A.CONFIRM_ID IS NOT NULL, IFNULL(UI.USER_NAME, MO.MEMBER_NAME), '') AS CONFIRM_ID
+		     , A.CONFIRM_DT, A.APPLY_CODE, A.CONFIRM_YN, A.DEL_YN, SC2.CODE_NAME1 DEL_YN_NAME
+	 	     , CASE WHEN SC.CODE_ID = 'Y' THEN CASE WHEN A.INPUT_GUBN = 'M' THEN '수동승인'
+	 	    										WHEN A.INPUT_GUBN = 'A' THEN '자동승인' END
+	 	    	    ELSE SC.CODE_NAME1
+	 	       END AS CONFIRM_YN_NAME
+		  FROM T_APPLY_MEMBER_REDUCTION A
+		 INNER JOIN T_REDUCTION_INFO I
+			ON A.REDUCTION_CODE = I.REDUCTION_CODE
+		 INNER JOIN T_MEMBER_INFO MI
+			ON A.MEMBER_ID = MI.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE SC
+		    ON A.CONFIRM_YN_PARENT = SC.PARENT_CODE_ID
+		   AND A.CONFIRM_YN = SC.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE SC2
+		    ON A.DEL_YN_PARENT = SC2.PARENT_CODE_ID
+		   AND A.DEL_YN = SC2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON A.CONFIRM_ID = UI.USER_ID
+		  LEFT OUTER JOIN T_MEMBER_INFO MO
+		    ON A.CONFIRM_ID = MO.MEMBER_ID
+		 WHERE MI.CONFIRM_YN = 'Y'
+		   AND I.USE_YN = 'Y'
+		   AND I.REDUCTION_GUBN IN ('ALL', 'MEMBER')
+		   AND I.REDUCTION_CODE != 'A14'
+		    
+		<if test='kConfirmYn != "N" and kConfirmYn != "C"'>
+		   <![CDATA[AND A.REG_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+		   <![CDATA[AND A.REG_DT <= (STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY) ]]>
+		</if>   
+		   
+		<if test="kConfirmYn neq null and kConfirmYn neq ''" >
+			AND A.CONFIRM_YN = #{kConfirmYn}
+		</if>   
+		   
+		<if test="kDelYn neq null and kDelYn neq ''" >
+			AND A.DEL_YN = #{kDelYn}
+		</if>
+		
+		<if test="kReductionCode neq null and kReductionCode neq ''" >
+			AND I.REDUCTION_CODE = #{kReductionCode}
+		</if>
+		
+		<if test="kSearchName neq null and kSearchName neq ''" >
+			AND MI.MEMBER_NAME = #{kSearchName}
+		</if>
+		
+		<if test="kAutoConfirmYn neq null and kAutoConfirmYn neq ''" >
+			AND A.INPUT_GUBN = #{kAutoConfirmYn}
+		</if>
+	
+		 ORDER BY A.REG_DT DESC
+	</select>
+	
+	<select id="Select_MemberReduction" parameterType="commonMap" resultType="commonMap">
+		SELECT A.REDUCTION_CODE
+		     , B.REDUCTION_NAME
+		     , A.MEMBER_ID
+		     , DATE_FORMAT(A.RED_EXP_DATE,'%Y-%m-%d') AS RED_EXP_DATE
+		     , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_PATH ,F.FILE_NAME , '.' , F.FILE_EXT) END AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) END AS NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN '' ELSE CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) END AS DISP_FILE_NAME
+		     , A.REJECT_REASON 
+		     , A.FILE_REL_KEY
+		     , F.FILE_EXT
+		     , A.CONFIRM_YN
+		     , D.MEMBER_NAME
+		     , B.REDUCTION_RATE
+		     , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+		     , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+		     , M.ADDR_CODE1
+		     , M.ADDR_CODE2
+		     , CC1.CODE_NAME1 AS GUGUN
+		     , CASE WHEN CC2.CODE_ID = 'Y' THEN CASE WHEN A.INPUT_GUBN = 'M' THEN '수동승인'
+	 	    										WHEN A.INPUT_GUBN = 'A' THEN '자동승인' END
+	 	    	    ELSE CC2.CODE_NAME1
+	 	       END AS CONFIRM_YN_NAME
+	 	     , A.INPUT_GUBN
+		  FROM T_APPLY_MEMBER_REDUCTION A
+		 INNER JOIN T_REDUCTION_INFO B
+		    ON A.REDUCTION_CODE = B.REDUCTION_CODE
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+	      LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		  LEFT OUTER JOIN T_MEMBER_INFO D
+		    ON A.MEMBER_ID = D.MEMBER_ID
+		 INNER JOIN T_MEMBER_INFO M
+		    ON A.MEMBER_ID = M.MEMBER_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC1
+		    ON M.GUGUN_PARENT = CC1.PARENT_CODE_ID
+		   AND M.GUGUN = CC1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE CC2
+		    ON A.CONFIRM_YN_PARENT = CC2.PARENT_CODE_ID
+		   AND A.CONFIRM_YN = CC2.CODE_ID
+		 WHERE A.APPLY_CODE = #{hApplyCode}
+	</select>
+	
+	<select id="Select_CarReduction" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.REDUCTION_CODE
+		     , B.REDUCTION_NAME
+		     , A.CAR_NO
+		     , A.MEMBER_ID
+		     , STR_TO_DATE(A.RED_EXP_DATE, '%Y-%m-%d') AS RED_EXP_DATE
+		     , CONCAT(F.FILE_PATH , F.FILE_NAME , '.' , F.FILE_EXT) AS FILE_NAME
+		     , CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS NAME
+		     , CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS DISP_FILE_NAME 
+		     , A.REJECT_REASON
+		     , A.FILE_REL_KEY
+		     , 'N' CHECK_VALUE
+		     , F.FILE_EXT
+		     , A.CONFIRM_YN
+		  FROM T_APPLY_CAR_REDUCTION A
+		 INNER JOIN T_REDUCTION_INFO B
+		    ON A.REDUCTION_CODE = B.REDUCTION_CODE
+		  LEFT OUTER JOIN T_FILE_RELATION R
+		    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+	      LEFT OUTER JOIN T_FILE_INFO F
+		    ON R.FILE_KEY = F.FILE_KEY
+		 WHERE A.APPLY_CODE = #{hApplyCode}
+	</select>
+	
+	<update id="Update_Apply_MemberReduction">
+		UPDATE T_APPLY_MEMBER_REDUCTION
+		   SET RED_EXP_DATE = #{grdRedExpDate}
+		   	 , CONFIRM_YN = #{redConfirmGubn}
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE APPLY_CODE = #{hApplyCode}
+		   AND REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+	</update>
+
+	
+	<update id="Update_Apply_MemberReductionCar">
+		UPDATE T_APPLY_CAR_REDUCTION
+		   SET RED_EXP_DATE = #{grdRedExpDate}
+		   	 , CONFIRM_YN = #{redConfirmGubn}
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE APPLY_CODE = #{hApplyCode}
+		   AND REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+	</update>
+	
+	<select id="select_MemberReduction" parameterType="commonMap"	resultType="commonMap">
+		SELECT COUNT(*) CNT
+		  FROM T_MEMBER_REDUCTION
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<insert id="Insert_MemberReduction">
+		INSERT INTO T_MEMBER_REDUCTION (
+       		   REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE, FILE_REL_KEY
+       		 , REG_ID, REG_DT, MOD_ID, MOD_DT
+	         , CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID, CONFIRM_DT
+	         , INPUT_GUBN_PARENT, INPUT_GUBN
+		) VALUES (
+			  #{grdReductionCode}, #{hMemberId}, #{grdRedExpDate}, #{grdFileRelKey}
+			, #{userId}, NOW(), #{userId}, NOW()
+			, 'CONFIRM_YN', #{redConfirmGubn}, #{userId}, NOW()
+			, 'REDUCT_INPUT_GUBN', 'M'
+		)
+	</insert>
+	
+	<insert id="Update_RedExpDate">
+	   UPDATE T_MEMBER_REDUCTION
+	      SET RED_EXP_DATE = #{grdRedExpDate}
+	        , MOD_ID = #{userId}
+	        , MOD_DT = NOW()
+	    WHERE REDUCTION_CODE = #{grdReductionCode} 
+	      AND MEMBER_ID = #{hMemberId}
+	</insert>
+	
+	<update id="Update_MemberReduction">
+		UPDATE T_MEMBER_REDUCTION
+		   SET RED_EXP_DATE = #{grdRedExpDate}
+			  , FILE_REL_KEY = #{grdFileRelKey}
+			  , CONFIRM_YN = #{redConfirmGubn}
+			  , CONFIRM_ID = #{userId}
+			  , CONFIRM_DT = NOW()
+			  , MOD_ID = #{userId}
+			  , MOD_DT = NOW()
+		 WHERE REDUCTION_CODE = #{grdReductionCode}
+		   AND MEMBER_ID = #{hMemberId}
+	</update>
+	
+	<insert id="Insert_MemberHistory">
+		INSERT INTO T_HISTORY_MEMBER_REDUCTION (
+	           H_SEQ, REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+	         , FILE_REL_KEY, APPLY_CODE
+	         , REG_ID, REG_DT, MOD_ID, MOD_DT
+	         , INPUT_GUBN
+		) SELECT #{hSeq}, A.REDUCTION_CODE, A.MEMBER_ID, A.RED_EXP_DATE
+		       , A.FILE_REL_KEY, #{hApplyCode} APPLY_CODE
+		       , #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+		       , 'M' AS INPUT_GUBN
+      		FROM T_APPLY_MEMBER_REDUCTION A
+     	   WHERE A.MEMBER_ID = #{hMemberId}
+     	     AND A.APPLY_CODE = #{hApplyCode}
+     	     AND A.REDUCTION_CODE = #{grdReductionCode}
+	</insert>
+
+	<update id="Update_MemberRefuseReduction">
+		UPDATE T_APPLY_MEMBER_REDUCTION
+		   SET RED_EXP_DATE = #{grdRedExpDate}
+		     , REJECT_REASON = #{grdRejectReason}
+		   	 , CONFIRM_YN = 'C'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE APPLY_CODE = #{hApplyCode}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND REDUCTION_CODE = #{grdReductionCode}
+	</update>
+	
+	<select id="select_CarReduction" parameterType="commonMap"	resultType="commonMap">
+		SELECT COUNT(*) CNT
+		  FROM T_CAR_REDUCTION
+		 WHERE REDUCTION_CODE = #{grd2ReductionCode}
+		   AND CAR_NO = #{grd2CarNo}
+		   AND MEMBER_ID = #{hMemberId}
+		   AND USE_YN = 'Y'
+	</select>
+
+	<update id="update_apply_car_reduction">
+		UPDATE T_APPLY_CAR_REDUCTION
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , REJECT_REASON = '99991231'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{grdMemberId}
+		   AND APPLY_CODE = #{grdApplyCode}
+	</update>
+	
+	<update id="update_apply_member_reduction">
+		UPDATE T_APPLY_MEMBER_REDUCTION
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , REJECT_REASON = NULL
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{grdMemberId}
+		   AND APPLY_CODE = #{grdApplyCode}
+	</update>
+	
+	<insert id="insert_car_reduction">
+		INSERT INTO T_CAR_REDUCTION (
+	           REDUCTION_CODE, MEMBER_ID, CAR_NO, RED_EXP_DATE
+	         , FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID
+	         , CONFIRM_DT, REG_ID, REG_DT, MOD_ID, MOD_DT
+			 , INPUT_GUBN, INPUT_GUBN_PARENT
+		) SELECT A.REDUCTION_CODE, A.MEMBER_ID, A.CAR_NO, A.RED_EXP_DATE
+		       , A.FILE_REL_KEY, A.CONFIRM_YN_PARENT, A.CONFIRM_YN, A.CONFIRM_ID
+		       , A.CONFIRM_DT, #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+			   , INPUT_GUBN, INPUT_GUBN_PARENT
+      		FROM T_APPLY_CAR_REDUCTION A
+     	   WHERE A.MEMBER_ID = #{grdMemberId}
+     	     AND A.APPLY_CODE = #{grdApplyCode}
+	</insert>
+	
+	<!-- 오류 : INPUT_GUBN 기본키인데 안들어감-->
+	<insert id="insert_member_reduction">
+		INSERT INTO T_MEMBER_REDUCTION (
+	           REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+	         , FILE_REL_KEY, CONFIRM_YN_PARENT, CONFIRM_YN, CONFIRM_ID
+	         , CONFIRM_DT, REG_ID, REG_DT, MOD_ID, MOD_DT
+		) SELECT A.REDUCTION_CODE, A.MEMBER_ID, A.RED_EXP_DATE
+		       , A.FILE_REL_KEY, A.CONFIRM_YN_PARENT, A.CONFIRM_YN, A.CONFIRM_ID
+		       , A.CONFIRM_DT, #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+      		FROM T_APPLY_MEMBER_REDUCTION A
+     	   WHERE A.MEMBER_ID = #{grdMemberId}
+     	     AND A.APPLY_CODE = #{grdApplyCode}
+	</insert>
+	
+	<!-- 오류 : H_SEQ 기본키인데 안들어감-->
+	<insert id="insert_car_reduction_history">
+		INSERT INTO T_HISTORY_CAR_REDUCTION (
+	           REDUCTION_CODE, MEMBER_ID, CAR_NO, RED_EXP_DATE
+	         , FILE_REL_KEY, APPLY_CODE
+	         , REG_ID, REG_DT, MOD_ID, MOD_DT
+			 , INPUT_GUBN
+		) SELECT A.REDUCTION_CODE, A.MEMBER_ID, A.CAR_NO, A.RED_EXP_DATE
+		       , A.FILE_REL_KEY, #{grdApplyCode} APPLY_CODE
+		       , #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+			   , INPUT_GUBN
+      		FROM T_APPLY_CAR_REDUCTION A
+     	   WHERE A.MEMBER_ID = #{grdMemberId}
+     	     AND A.APPLY_CODE = #{grdApplyCode}
+	</insert>
+	
+	<!-- 오류 : H_SEQ 기본키인데 안들어감-->
+	<insert id="insert_member_reduction_history">
+		INSERT INTO T_HISTORY_MEMBER_REDUCTION (
+	           REDUCTION_CODE, MEMBER_ID, RED_EXP_DATE
+	         , FILE_REL_KEY, APPLY_CODE
+	         , REG_ID, REG_DT, MOD_ID, MOD_DT
+		) SELECT A.REDUCTION_CODE, A.MEMBER_ID, A.RED_EXP_DATE
+		       , A.FILE_REL_KEY, #{grdApplyCode} APPLY_CODE
+		       , #{userId} REG_ID, NOW() REG_DT, #{userId} MOD_ID, NOW() MOD_DT
+      		FROM T_APPLY_MEMBER_REDUCTION A
+     	   WHERE A.MEMBER_ID = #{grdMemberId}
+     	     AND A.APPLY_CODE = #{grdApplyCode}
+	</insert>
+	
+	<select id="select_reductionList" parameterType="commonMap" resultType="commonMap">
+	    SELECT REDUCTION_CODE AS VALUE, REDUCTION_NAME AS TEXT
+  		  FROM T_REDUCTION_INFO
+ 		 WHERE USE_YN = 'Y'
+		   AND REDUCTION_CODE != 'A14'
+		   AND REDUCTION_GUBN IN ('ALL', 'MEMBER')
+ 		 ORDER BY REDUCTION_CODE
+    </select> 
+    
+    <select id="select_applyReductionYn" parameterType="commonMap" resultType="commonMap">
+       SELECT CONFIRM_YN
+		 FROM T_APPLY_MEMBER_REDUCTION
+	    WHERE APPLY_CODE = #{hApplyCode}
+		  AND MEMBER_ID = #{hMemberId}
+    </select> 
+
+    <select id="select_ParkingAreaOption" parameterType="commonMap" resultType="commonMap">
+        SELECT P.PARKING_NO, P.API_VER_GUBN, O.REG_API_TRY_CNT, O.AUTO_API_TRY_CNT, O.CALL_API_YN
+          FROM T_PARKING_INFO P
+         INNER JOIN T_SYS_OPTION O
+            ON 1 = 1
+         WHERE P.PARKING_NO = #{parkingNo}
+    </select>
+
+</mapper>

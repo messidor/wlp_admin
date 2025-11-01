@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.index.user">
+
+	<select id="select_userInfo" parameterType="commonMap"	resultType="commonMap">
+		SELECT USER_ID, '' AS USER_PW, USER_NAME, USER_PHONE, USER_EMAIL, RECV_YN
+		  FROM T_USER_INFO
+		 WHERE USER_ID = #{userId}
+	</select>
+	
+	<select id="update_userInfo" parameterType="commonMap"	resultType="commonMap">
+		UPDATE T_USER_INFO
+		   SET USER_PHONE = #{userInfoPhone}
+		   	 , USER_NAME = #{userInfoName}
+		   	 , USER_EMAIL = #{userInfoEmail} 
+		<if test="newPassword1 neq null and newPassword1 neq ''" >
+		     , USER_PW = #{newPassword1}
+		</if>
+			 , RECV_YN = #{recvYn}
+		     , MOD_ID = #{userInfoId}
+		     , MOD_DT = NOW()
+		 WHERE USER_ID = #{userInfoId}
+	</select>
+	
+	<select id="select_userPasswordCheck" parameterType="commonMap"	resultType="commonMap">
+		SELECT COUNT(*) AS PASSWORD_CHECK
+		  FROM T_USER_INFO
+		 WHERE USER_ID = #{userInfoId}
+		   AND USER_PW = #{userInfoPw}
+	</select>
+</mapper>

@@ -1,0 +1,94 @@
+/* dropzone 관련 */
+.dz-image,
+.dz-details,
+.dz-size,
+.dz-filename,
+.dz-progress,
+.dz-error-message,
+.dz-success-mark,
+.dz-error-mark {display:inline-block;}
+
+.dz-error-mark {
+    cursor:pointer;
+}
+.dz-size, .dz-success-mark {
+    display:none;
+}
+
+.dropzone-file-upload-message {
+    z-index:0;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.dropzone-file-upload {
+    padding:10px;
+    font-size:1.2em;
+    font-weight:bold;
+    margin-top:10px;
+    cursor:pointer;
+    min-height:100px;
+    vertical-align:middle;
+    border:2px dotted red;
+    overflow-y:auto;
+    overflow-x:hidden;
+    z-index:100;
+    font-size:13px;
+}
+
+.dropzone-file-upload.control-file-upload {
+    max-width:calc(100% - 103px) !important;
+    margin-top:0px !important;
+    margin-left:3px;
+    margin-right:0px !important;
+    margin-bottom:0px !important;
+}
+
+.dz-success-mark {
+    line-height:20px;
+    vertical-align: text-bottom;
+}
+
+.dz-success-mark, .dz-success-mark svg {
+    width:20px;
+    height:20px;
+}
+
+.dz-error-mark {
+    line-height:20px;
+    vertical-align: text-bottom;
+}
+
+.dz-error-mark, .dz-error-mark svg {
+    width:20px;
+    height:20px;
+}
+
+.dz-details {
+    line-height:20px;
+}
+
+.dz-preview {
+    margin-bottom:5px;
+    margin-right:5px;
+    display:inline-block;
+}
+
+.dz-wrapper {
+    border:1px solid #aaa;
+    padding:1px 5px;
+    border-radius:15px;
+    display:inline-block;
+}
+
+.dz-preview.dz-file-preview {
+    display:block;
+}
+
+.dz-preview.dz-file-preview:first-child {
+    margin-top:5px;
+}
+
+span[data-dz-name] {
+    font-size:13px;
+}

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.market.offlineCouponManage">
+
+	<select id="select_couponList" parameterType="commonMap" resultType="commonMap">
+		SELECT M.OFF_COUPON_CODE, GI.P_GOV_NAME, M.OFF_COUPON_NAME, M.OFF_COUPON_FORMAT
+			 , C1.CODE_NAME1 AS DISCOUNT_GUBN_NAME, C2.CODE_NAME1 AS COUPON_USE_GUBN_NAME
+			 , M.DISCOUNT, IFNULL(D.QTY, 0) QTY, UI.USER_NAME AS REG_NAME, M.REG_DT
+		  FROM T_OFFLINE_COUPON_MASTER M
+		  LEFT OUTER JOIN (
+		 			SELECT OFF_COUPON_CODE, COUNT(*) QTY
+ 					  FROM T_OFFLINE_COUPON_DETAIL
+					 GROUP BY OFF_COUPON_CODE
+			 ) D
+			ON M.OFF_COUPON_CODE = D.OFF_COUPON_CODE
+		 INNER JOIN T_PARKING_GOV_INFO GI
+			ON M.P_GOV_CODE = GI.P_GOV_CODE
+		  LEFT OUTER JOIN T_SYS_COMCODE C1
+			ON M.DISCOUNT_GUBN_PARENT = C1.PARENT_CODE_ID
+		   AND M.DISCOUNT_GUBN = C1.CODE_ID
+		  LEFT OUTER JOIN T_SYS_COMCODE C2
+			ON M.COUPON_USE_GUBN_PARENT = C2.PARENT_CODE_ID
+		   AND M.COUPON_USE_GUBN = C2.CODE_ID
+		  LEFT OUTER JOIN T_USER_INFO UI
+			ON M.REG_ID = UI.USER_ID
+		 WHERE 1=1
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			AND M.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		<if test="kCouponName neq null and kCouponName neq ''" >
+			AND M.OFF_COUPON_NAME LIKE '%${kCouponName}%'
+		</if>
+		<if test="kCouponUseGubn neq null and kCouponUseGubn neq ''" >
+			AND M.COUPON_USE_GUBN = #{kCouponUseGubn}
+		</if>
+		<if test="kDiscountGubn neq null and kDiscountGubn neq ''" >
+			AND M.DISCOUNT_GUBN = #{kDiscountGubn}
+		</if>
+		 ORDER BY M.OFF_COUPON_CODE DESC
+	</select>
+	
+	<select id="select_couponDetail" parameterType="commonMap" resultType="commonMap">
+		SELECT M.OFF_COUPON_CODE, GI.P_GOV_NAME, M.OFF_COUPON_NAME, D.QTY
+		  FROM T_OFFLINE_COUPON_MASTER M
+		  LEFT OUTER JOIN (
+		 			SELECT OFF_COUPON_CODE, COUNT(*) QTY
+ 					  FROM T_OFFLINE_COUPON_DETAIL
+					 GROUP BY OFF_COUPON_CODE
+			 ) D
+			ON M.OFF_COUPON_CODE = D.OFF_COUPON_CODE
+		 INNER JOIN T_PARKING_GOV_INFO GI
+			ON M.P_GOV_CODE = GI.P_GOV_CODE
+		 WHERE M.OFF_COUPON_CODE = #{hOfflineCouponCode}
+	</select>
+
+	<select id="select_barcodeDupCheck" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) AS CNT
+		  FROM T_OFFLINE_COUPON_DETAIL
+		 WHERE COUPON_CODE = #{newCouponCode}
+	</select>
+	
+	<select id="select_maxSeq" parameterType="commonMap" resultType="commonMap">
+		SELECT IFNULL(MAX(SEQ), 0) + 1 AS SEQ
+		  FROM T_OFFLINE_COUPON_DETAIL
+		 WHERE OFF_COUPON_CODE = #{hOfflineCouponCode}
+	</select>
+	
+	<select id="select_dupFormat" parameterType="commonMap" resultType="commonMap">
+		SELECT COUNT(*) CNT
+		  FROM T_OFFLINE_COUPON_MASTER
+		 WHERE P_GOV_CODE = #{pGovCode}
+		   AND OFF_COUPON_FORMAT = #{pCouponFormat}
+	</select>
+	
+	<select id="select_offCouponDetail" parameterType="commonMap" resultType="commonMap">
+		 SELECT PD.COUPON_CODE, GI.P_GOV_NAME
+		 	  , CONCAT(FORMAT(M.DISCOUNT, 0), IF(M.DISCOUNT_GUBN = 'M', '분', '원')) OFF_COUPON_NAME
+		 	  , IF(M.COUPON_USE_GUBN = 'D1', '전통시장할인권','선 불 주 차 권') TITLE
+		   FROM T_OFFLINE_COUPON_MASTER M
+		  INNER JOIN T_COUPON_PRINT_MASTER PM
+		     ON M.OFF_COUPON_CODE = PM.OFF_COUPON_CODE
+		  INNER JOIN T_COUPON_PRINT_DETAIL PD
+		     ON PM.PRINT_CODE = PD.PRINT_CODE
+		 INNER JOIN T_PARKING_GOV_INFO GI
+			ON M.P_GOV_CODE = GI.P_GOV_CODE
+		  WHERE PM.PRINT_CODE = #{hPrintCode}
+		  ORDER BY PD.PRINT_SEQ
+	</select>
+	
+	<select id="select_offCouponFormat" parameterType="commonMap" resultType="commonMap">
+		SELECT OFF_COUPON_FORMAT
+		  FROM T_OFFLINE_COUPON_MASTER
+		 WHERE OFF_COUPON_CODE = #{offCouponCode}
+	</select>
+	
+	<select id="select_couponFormatElement" parameterType="commonMap" resultType="commonMap">
+		SELECT FM_CODE, FM_REGEXP, IFNULL(FM_COLUMN, '') FM_COLUMN
+		  FROM T_OFFLINE_COUPON_FORMAT
+		 ORDER BY FM_CODE
+	</select>
+	
+	<select id="select_couponMasterColumn" parameterType="commonMap" resultType="commonMap">
+		SELECT 'COUPON_USE_GUBN' AS ID, COUPON_USE_GUBN AS VALUE
+		  FROM T_OFFLINE_COUPON_MASTER
+		 WHERE OFF_COUPON_CODE = #{offCouponCode}
+		 UNION ALL
+		SELECT 'DISCOUNT_GUBN' AS ID, DISCOUNT_GUBN AS VALUE
+		  FROM T_OFFLINE_COUPON_MASTER
+		 WHERE OFF_COUPON_CODE = #{offCouponCode}
+		 UNION ALL
+		SELECT 'DISCOUNT' AS ID, DISCOUNT AS VALUE
+		  FROM T_OFFLINE_COUPON_MASTER
+		 WHERE OFF_COUPON_CODE = #{offCouponCode}
+	</select>
+	
+	<select id="select_newKey" parameterType="commonMap" resultType="commonMap">
+		SELECT FN_MAKE_KEY('PRINT_CODE') NEW_KEY
+		  FROM DUAL
+	</select>
+	
+	<insert id="insert_offlineCouponMaster">
+		INSERT INTO T_OFFLINE_COUPON_MASTER(
+			   OFF_COUPON_CODE, P_GOV_CODE, OFF_COUPON_NAME, OFF_COUPON_FORMAT, COUPON_USE_GUBN_PARENT
+			 , COUPON_USE_GUBN, DISCOUNT_GUBN_PARENT, DISCOUNT_GUBN, DISCOUNT
+			 , REG_ID, REG_DT
+		) VALUES(
+			   FN_MAKE_KEY('OFF_COUPON_CODE'), #{pGovCode}, #{pCouponName}, #{pCouponFormat}, 'COUPON_USE_GUBN'
+			 , #{pCouponUseGubn}, 'DISCOUNT_GUBN', #{pDiscountGubn}, #{pDiscount}
+			 , #{userId}, NOW()
+		)
+	</insert>
+	
+	<insert id="insert_offlineCouponDetail">
+		INSERT INTO T_OFFLINE_COUPON_DETAIL(
+			   OFF_COUPON_CODE, SEQ, COUPON_CODE, PARKING_NO, MEMBER_ID
+			 , CAR_NO, PAY_YN_PARENT, PAY_YN, USE_DT, PAY_DT
+			 , REG_ID, REG_DT, MOD_ID, MOD_DT
+		) VALUES(
+			   #{hOfflineCouponCode}, #{seq}, #{barcode}, NULL, NULL
+			 , NULL, 'USE_YN', 'N', NULL, NULL
+			 , #{userId}, NOW(), #{userId}, NOW()
+		)
+	</insert>
+	
+	<insert id="insert_couponPrintMaster">
+		INSERT T_COUPON_PRINT_MASTER(
+			   PRINT_CODE, OFF_COUPON_CODE, PRINT_QTY, REG_ID, REG_DT
+		) VALUES(
+			   #{printCode}, #{hOfflineCouponCode}, #{pQty}, #{userId}, NOW()
+		)
+	</insert>
+	
+	<insert id="insert_couponPrintDetail">
+		INSERT T_COUPON_PRINT_DETAIL(
+			   PRINT_CODE, PRINT_SEQ, COUPON_CODE, REG_ID, REG_DT
+		) VALUES(
+			   #{printCode}, #{printSeq}, #{barcode}, #{userId}, NOW()
+		)
+	</insert>
+
+</mapper>

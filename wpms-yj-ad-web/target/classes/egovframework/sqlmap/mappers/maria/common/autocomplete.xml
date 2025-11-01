@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.autocomplete">
+	
+	<!-- 기관명 -> 서비스키  -->
+	<select id="select_serviceKey" parameterType="commonMap" resultType="commonMap">
+		SELECT P_SERVICE_KEY AS VALUE 
+	         , CONCAT(P_COMP_CODE , ' | ' , P_COMP_NAME) AS TEXT
+	         , P_SERVICE_KEY AS NAME
+		  FROM T_PARKING_COMP_INFO
+		 WHERE USE_YN = 'Y'
+		<if test="q neq null and q neq ''" >
+		   AND (P_COMP_NAME LIKE '%${q}%' OR P_COMP_NAME LIKE '%${q}%')
+		</if>
+	</select>
+	
+	<!-- 기관명 찾기 -->
+	<select id="select_parkingComp" parameterType="commonMap" resultType="commonMap">
+		SELECT P_SERVICE_KEY AS VALUE 
+	         , CONCAT(P_COMP_CODE , ' | ' , P_COMP_NAME) AS TEXT
+	         , P_COMP_NAME AS NAME
+		  FROM T_PARKING_COMP_INFO
+		 WHERE USE_YN = 'Y'
+		<if test="q neq null and q neq ''" >
+		   AND (P_COMP_NAME LIKE '%${q}%' OR P_COMP_NAME LIKE '%${q}%')
+		</if>
+	</select>
+	
+	<!-- 주차장명 -> parkingAreaCode -->
+	<select id="select_parkingArea" parameterType="commonMap" resultType="commonMap">
+		 SELECT PARKING_AREA_CODE AS VALUE 
+	          , CONCAT(PARKING_NO , ' | ' , PARKING_NAME) AS TEXT
+	          , PARKING_AREA_CODE AS NAME
+		   FROM T_PARKING_INFO
+		  WHERE PARKING_AREA_CODE IS NOT NULL
+		    AND USE_YN = 'Y'
+		   
+		<if test="q neq null and q neq ''" >
+	   		AND (PARKING_NAME LIKE '%${q}%' OR PARKING_NAME LIKE '%${q}%')
+		</if>
+	</select>
+	
+	<!-- 주차장명 찾기 -->
+	<select id="select_parkingName" parameterType="commonMap" resultType="commonMap">
+		 SELECT PARKING_AREA_CODE AS VALUE 
+	          , CONCAT(PARKING_NO , ' | ' , PARKING_NAME) AS TEXT
+	          , PARKING_NAME AS NAME
+		   FROM T_PARKING_INFO
+		  WHERE PARKING_AREA_CODE IS NOT NULL
+		   
+		<if test="q neq null and q neq ''" >
+	   		AND (PARKING_NAME LIKE '%${q}%' OR PARKING_NAME LIKE '%${q}%')
+		</if>
+	</select>
+	
+	
+	<!-- 매출처,매입매출처 -->
+	<select id="select_carNo" parameterType="commonMap" resultType="commonMap">
+		 SELECT CAR_NO AS VALUE 
+	          , CAR_NO AS TEXT
+	          , CAR_NO AS NAME
+	   		FROM T_CAR_INFO
+	 	   WHERE USE_YN = 'Y'
+			<if test="q neq null and q neq ''" >
+				AND (CAR_NO LIKE '%${q}%' OR CAR_NO LIKE '%${q}%')
+			</if>
+	</select>
+
+	<!-- API 버전 1.0 주차장명 -> parkingAreaCode -->
+	<select id="select_parkingArea1" parameterType="commonMap" resultType="commonMap">
+		 SELECT PARKING_AREA_CODE AS VALUE 
+	          , CONCAT(PARKING_AREA_CODE , ' | ' , PARKING_NAME) AS TEXT
+	          , PARKING_AREA_CODE AS NAME
+		   FROM T_PARKING_INFO
+		  WHERE PARKING_AREA_CODE IS NOT NULL
+		    AND USE_YN = 'Y'
+		    AND API_VER_GUBN = 1
+		<if test="q neq null and q neq ''" >
+	   		AND (PARKING_NAME LIKE '%${q}%' OR PARKING_NAME LIKE '%${q}%')
+		</if>
+	</select>
+	
+	<!-- API 버전 2.0 주차장명 -> parkingAreaCode -->
+	<select id="select_parkingArea2" parameterType="commonMap" resultType="commonMap">
+		 SELECT PARKING_AREA_CODE AS VALUE 
+	          , CONCAT(PARKING_AREA_CODE , ' | ' , PARKING_NAME) AS TEXT
+	          , PARKING_AREA_CODE AS NAME
+		   FROM T_PARKING_INFO
+		  WHERE PARKING_AREA_CODE IS NOT NULL
+		    AND USE_YN = 'Y'
+		    AND API_VER_GUBN = 2
+		<if test="q neq null and q neq ''" >
+	   		AND (PARKING_NAME LIKE '%${q}%' OR PARKING_NAME LIKE '%${q}%')
+		</if>
+	</select>
+</mapper>

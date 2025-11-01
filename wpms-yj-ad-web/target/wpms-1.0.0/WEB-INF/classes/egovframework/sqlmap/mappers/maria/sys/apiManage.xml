@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.sys.apiManage">
+
+	<select id="select_list" parameterType="commonMap" resultType="commonMap">
+		SELECT AKI.SERVICE_KEY, AKI.API_GUBN, AKI.API_GUBN_PARENT, AKI.PROVIDED_NAME, AKI.MOD_DT
+			 , UI.USER_NAME AS MOD_ID, AKI.API_GUBN AS ORG_API_GUBN, AKI.USE_YN
+			 , '' AS STATE_COL
+		  FROM T_API_KEY_INFO AKI
+		  LEFT OUTER JOIN T_USER_INFO UI
+		    ON AKI.MOD_ID = USER_ID
+		 WHERE 1=1
+	<![CDATA[AND AKI.USE_YN <> 'D']]>
+		<if test="kApiGubn neq null and kApiGubn neq ''" >
+			AND AKI.API_GUBN = #{kApiGubn}
+		</if>
+		<if test="kProvidedName neq null and kProvidedName neq ''" >
+			AND AKI.PROVIDED_NAME LIKE '%${kProvidedName}%'
+		</if>
+		<if test="kUseYn neq null and kUseYn neq ''" >
+			AND AKI.USE_YN = #{kUseYn}
+		</if>
+		ORDER BY AKI.MOD_DT DESC
+	</select>
+	
+	<insert id="insert_api">
+		INSERT INTO T_API_KEY_INFO (
+   	     	   SERVICE_KEY
+   	     	 , API_GUBN
+   	     	 , API_GUBN_PARENT
+   	     	 , PROVIDED_NAME
+   	     	 , USE_YN_PARENT
+   	     	 , USE_YN
+   	     	 , REG_ID
+   	     	 , REG_DT
+   	     	 , MOD_ID
+   	     	 , MOD_DT
+	  		 ) VALUES (
+	  		   #{serviceKey}
+	  		 , #{grdApiGubn}
+	  		 , 'API_GUBN'
+	  		 , #{grdProvidedName}
+	  		 , 'USE_YN'
+	  		 , #{grdUseYn}
+ 			 , #{userId}
+ 			 , NOW()
+ 			 , #{userId}
+ 			 , NOW()
+			 )
+	</insert>
+
+	<update id="update_api">
+		UPDATE T_API_KEY_INFO
+		   SET API_GUBN = #{grdApiGubn}
+		     , PROVIDED_NAME = #{grdProvidedName}
+		     , USE_YN = #{grdUseYn}
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE SERVICE_KEY = #{grdServiceKey}
+		   AND API_GUBN = #{grdOrgApiGubn}
+	</update>
+	
+	<delete id="delete_api">
+		UPDATE T_API_KEY_INFO
+		   SET USE_YN = 'D'
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE SERVICE_KEY = #{grdServiceKey}
+		   AND API_GUBN = #{grdOrgApiGubn}
+	</delete>
+</mapper>

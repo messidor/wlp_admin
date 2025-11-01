@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.govUserStatus">
+
+	<select id="select_govUserList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.MEMBER_ID, T.MEMBER_NAME, T.CAR_NO
+		     , CONCAT(FORMAT(COUNT(CAR_NO), 0),'건') USE_CNT
+		  FROM (SELECT CH.MEMBER_ID, MI.MEMBER_NAME, CH.CAR_NO 
+		  		  FROM T_PARKING_CAR_HISTORY CH
+			     INNER JOIN T_PARKING_INFO PI
+		  		    ON CH.PARKING_NO = PI.PARKING_NO
+		  	    INNER JOIN T_PARKING_GOV_INFO GI
+		  		   ON PI.P_GOV_CODE = GI.P_GOV_CODE
+		  	    INNER JOIN T_MEMBER_INFO MI
+		  		   ON CH.MEMBER_ID = MI.MEMBER_ID
+			    WHERE 1=1			
+			<if test="kUseYear neq null and kUseYear neq ''" >
+				  AND DATE_FORMAT(P_ENT_DT, '%Y') = ${kUseYear}
+			</if>
+			
+			<if test="kUseMonth neq null and kUseMonth neq ''" >
+				  AND DATE_FORMAT(P_ENT_DT, '%m') = ${kUseMonth}
+			</if>
+			    ) T
+		 GROUP BY T.MEMBER_ID, T.MEMBER_NAME, T.CAR_NO
+		 ORDER BY COUNT(CAR_NO) DESC
+	</select>
+	
+	<select id="select_govUserChart" parameterType="commonMap" resultType="commonMap">
+		SELECT MAX(T2.PARKING_NO) AS PARKING_NO
+			 , (SELECT MAX(PARKING_NAME) FROM T_PARKING_INFO WHERE PARKING_NO = T2.PARKING_NO) AS PARKING_NAME
+			 , T2.USE_CNT
+			 , ROUND(SUM(T2.USE_CNT) * 100 / SUM(SUM(T2.USE_CNT)) OVER(), 2) AS PERCENT
+		  FROM (SELECT T.PARKING_NO, COUNT(CAR_NO) USE_CNT
+				  FROM (SELECT CH.PARKING_NO, CH.CAR_NO 
+				  		  FROM T_PARKING_CAR_HISTORY CH
+					     INNER JOIN T_PARKING_INFO PI
+				  		    ON CH.PARKING_NO = PI.PARKING_NO
+				  	     INNER JOIN T_PARKING_GOV_INFO GI
+				  		    ON PI.P_GOV_CODE = GI.P_GOV_CODE
+				  		 INNER JOIN T_MEMBER_INFO MI
+				  		    ON CH.MEMBER_ID = MI.MEMBER_ID
+						 WHERE 1=1
+					<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+						   AND PI.P_GOV_CODE = #{kParkingGovCode}
+					</if>
+					
+					<if test="kUseYear neq null and kUseYear neq ''" >
+						   AND DATE_FORMAT(P_ENT_DT, '%Y') = ${kUseYear}
+					</if>
+					
+					<if test="kUseMonth neq null and kUseMonth neq ''" >
+						   AND DATE_FORMAT(P_ENT_DT, '%m') = ${kUseMonth}
+					</if>
+					   ) T
+				 GROUP BY T.PARKING_NO
+				 ORDER BY COUNT(CAR_NO) DESC
+			   ) T2
+		 GROUP BY T2.PARKING_NO, T2.USE_CNT
+		 LIMIT 5
+	</select>
+	
+	<select id="select_parkingInoutChart" parameterType="commonMap" resultType="commonMap">
+		SELECT '입차' AS IO,
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		   IFNULL(TRUNCATE(SUM(CASE WHEN T.ENT_DAY = '${item.kDayArr}' THEN T.ENT_DAY END) / IFNULL(SUM(T.TOTAL),0) * 100 ,0),0) AS `${item.kDayArr}`
+		    </foreach>
+		  FROM (SELECT A.PARKING_NO, ENT_DAY
+		    , MAX(A.PARKING_NAME) AS PARKING_NAME
+		             , COUNT(B.PARKING_NO) AS TOTAL
+		             , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		          FROM T_PARKING_INFO A
+		          LEFT OUTER JOIN (SELECT PARKING_NO
+		    , DATE_FORMAT(P_ENT_DT, '%d') ENT_DAY
+		FROM T_PARKING_CAR_HISTORY CH
+		INNER JOIN T_MEMBER_INFO MI
+		   ON CH.MEMBER_ID = MI.MEMBER_ID
+		   WHERE 1=1 
+		 AND P_ENT_DT IS NOT NULL
+		 AND PARKING_STATUS IN('IN', 'OUT')
+		 AND DATE_FORMAT(P_ENT_DT, '%Y') = #{kUseYear}
+		 AND DATE_FORMAT(P_ENT_DT, '%m') = #{kUseMonth}
+		 AND DEL_YN = 'N'
+		                   ) B
+		            ON A.PARKING_NO = B.PARKING_NO
+		          WHERE A.USE_YN = 'Y'
+		  GROUP BY A.PARKING_NO, ENT_DAY
+		        ) T
+		 WHERE 1=1
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+		   AND T.PARKING_NO = #{kParkingNo}
+		</if>
+		
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		
+		 UNION ALL
+		
+		SELECT '출차' AS IO,
+		<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+		   IFNULL(TRUNCATE(SUM(CASE WHEN T.OUT_DAY = '${item.kDayArr}' THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,0),0) AS `${item.kDayArr}`
+		    </foreach>
+		  FROM (SELECT A.PARKING_NO, OUT_DAY
+		    , MAX(A.PARKING_NAME) AS PARKING_NAME
+		             , COUNT(B.PARKING_NO) AS TOTAL
+		             , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		          FROM T_PARKING_INFO A
+		          LEFT OUTER JOIN (SELECT PARKING_NO
+		    , DATE_FORMAT(P_OUT_DT, '%d') OUT_DAY
+		 FROM T_PARKING_CAR_HISTORY CH
+		INNER JOIN T_MEMBER_INFO MI
+		   ON CH.MEMBER_ID = MI.MEMBER_ID
+		WHERE 1=1 
+		  AND P_OUT_DT IS NOT NULL
+		      AND PARKING_STATUS = 'OUT'
+		      AND DATE_FORMAT(P_OUT_DT, '%Y') = #{kUseYear}
+		      AND DATE_FORMAT(P_OUT_DT, '%m') = #{kUseMonth}
+		  AND DEL_YN = 'N'
+		                ) B
+		            ON A.PARKING_NO = B.PARKING_NO
+		         WHERE A.USE_YN = 'Y'
+		 GROUP BY A.PARKING_NO, OUT_DAY
+		       ) T
+		 WHERE 1=1
+		<if test="kParkingNo neq null and kParkingNo neq ''" >
+		   AND T.PARKING_NO = #{kParkingNo}
+		</if>
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+	
+	</select>
+	
+	<select id="select_parkingPayChart" parameterType="commonMap" resultType="commonMap">
+		SELECT J.P_GOV_NAME, PI.PARKING_NAME, IFNULL(T.TOTAL, 0) AS TOTAL
+		  FROM T_PARKING_GOV_INFO J
+		 INNER JOIN T_PARKING_INFO PI
+		    ON PI.P_GOV_CODE = J.P_GOV_CODE
+		  LEFT OUTER JOIN (SELECT SUM(X.PARKING_PRICE) AS TOTAL
+		   , X.P_GOV_CODE, X.P_GOV_NAME
+		   , X.PARKING_NAME, X.PARKING_NO
+		             FROM (SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+		    , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+		    ,  B.PARKING_PRICE, D.P_GOV_CODE
+		    , D.P_GOV_NAME, PI.PARKING_NAME, PI.PARKING_NO
+		FROM T_PARKING_PAY A
+		   INNER JOIN T_PARKING_CHARGE B
+		  ON A.PAY_CODE = B.PAY_CODE
+		   INNER JOIN T_PARKING_INFO C
+		  ON B.PARKING_NO = C.PARKING_NO
+		   INNER JOIN T_PARKING_GOV_INFO D
+		      ON C.P_GOV_CODE = D.P_GOV_CODE
+		   INNER JOIN T_PARKING_INFO PI
+		      ON B.PARKING_NO = PI.PARKING_NO
+		   INNER JOIN T_MEMBER_INFO MI
+		  ON B.MEMBER_ID = MI.MEMBER_ID
+		                    WHERE C.USE_YN = 'Y'
+		   ) X
+		  WHERE 1=1
+		
+		
+		<if test="kUseYear neq null and kUseYear neq ''" >
+		    AND X.PAY_YEAR = ${kUseYear}
+		</if>
+		
+		<if test="kUseMonth neq null and kUseMonth neq ''" >
+		    AND X.PAY_MONTH = ${kUseMonth}
+		</if>
+		  GROUP BY  X.P_GOV_CODE, X.P_GOV_NAME, X.PARKING_NO, X.PARKING_NAME
+		) T
+		    ON T.P_GOV_CODE = J.P_GOV_CODE
+		   AND T.PARKING_NO = PI.PARKING_NO
+		 WHERE PI.USE_YN = 'Y'
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND J.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		     GROUP BY PI.PARKING_NO, PI.PARKING_NAME, J.P_GOV_CODE, J.P_GOV_NAME , T.TOTAL
+		     ORDER BY J.P_GOV_CODE, PI.PARKING_NAME ASC
+		
+	</select>
+
+
+
+</mapper>

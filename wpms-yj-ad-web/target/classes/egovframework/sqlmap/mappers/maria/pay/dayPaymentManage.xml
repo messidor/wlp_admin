@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.pay.dayPaymentManage">
+
+	<select id="Select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT REG_DT, P_GOV_NAME, PARKING_NAME, CAR_NO, MEMBER_NAME
+			 , PC_GUBN_NAME, PRICE
+			 , CONCAT(FORMAT(PRICE, 0) , '원') AS PAY_PRICE
+			 , CONCAT(FORMAT(SUM(PRICE) OVER(), 0) , '원') AS TOTAL_PRICE
+			 , ROW_NUMBER() OVER(ORDER BY REG_DT DESC) AS NUM
+ 		 FROM (	SELECT DATE_FORMAT(P.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+					 , PG.P_GOV_NAME, PI.PARKING_NAME, C.CAR_NO, MI.MEMBER_NAME
+					 , C1.CODE_NAME1 AS PC_GUBN_NAME
+					 , CONCAT(FORMAT(IFNULL(P.PAY_PRICE,0), 0) , '원') AS PAY_PRICE
+					 , CASE WHEN P.PC_GUBN = 'C' THEN CONCAT('-' , P.PAY_PRICE)
+					 		ELSE IFNULL(P.PAY_PRICE,0) END AS PRICE
+				  FROM T_PARKING_CHARGE C
+				 INNER JOIN T_PARKING_PAY P
+				    ON C.PAY_CODE = P.PAY_CODE
+				 INNER JOIN T_PARKING_INFO PI
+				    ON C.PARKING_NO = PI.PARKING_NO
+				 INNER JOIN T_PARKING_GOV_INFO PG
+				    ON PI.P_GOV_CODE = PG.P_GOV_CODE
+				  LEFT OUTER JOIN T_MEMBER_INFO MI
+				    ON C.MEMBER_ID = MI.MEMBER_ID
+				  LEFT OUTER JOIN T_SYS_COMCODE C1
+				    ON P.PC_GUBN_PARENT = C1.PARENT_CODE_ID
+				   AND P.PC_GUBN = C1.CODE_ID
+	<![CDATA[
+				 WHERE P.PAY_PRICE > 0
+				   AND P.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d') 
+				   AND P.REG_DT <= (STR_TO_DATE(#{startDate}, '%Y-%m-%d') + INTERVAL 1 DAY)
+		]]>
+				<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+					AND PI.P_GOV_CODE = #{kParkingGovCode}
+				</if>
+				<if test="kParkingNo neq null and kParkingNo neq ''" >
+					AND C.PARKING_NO = #{kParkingNo}
+				</if>
+				<if test="kPcGubn neq null and kPcGubn neq ''" >
+					AND P.PC_GUBN = #{kPcGubn}
+				</if>
+			 ) T
+		 ORDER BY REG_DT DESC
+	</select>
+
+</mapper>

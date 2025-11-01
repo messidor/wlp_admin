@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.springframework.org/schema/beans"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+                           http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+
+    <util:properties id="global" location="classpath:/egovframework/egovProps/globals.properties" />
+    <util:properties id="prop" location="classpath:/egovframework/egovProps/globals-#{global['Globals.active']}.properties" />
+
+    <!-- 환경설정 기본정보를 globals.properties 에서 참조하도록 propertyConfigurer 설정  -->
+    <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="systemPropertiesMode" value="2" />
+        <property name="locations">
+            <list>
+                <value>classpath:/egovframework/egovProps/globals-#{global['Globals.active']}.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- datasource 설정(propertyConfigurer 활용) -->
+    <!-- 실 운영환경에서는 dbcp를 사용하도록 설정 변경 필요 -->
+    <alias name="dataSource-${Globals.DbType}" alias="dataSource"/>
+    <alias name="dataSource-${Globals.DbType}" alias="egov.dataSource"/>
+
+    <bean id="dataSource-maria" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <property name="driverClassName" value="${Globals.DriverClassName}"/>
+        <property name="jdbcUrl" value="${Globals.Url}"/>
+        <property name="username" value="${Globals.UserName}"/>
+        <property name="password" value="${Globals.Password}"/>
+        
+        <property name="maximumPoolSize" value="20" />
+        <property name="minimumIdle" value="5" />
+        <property name="connectionTestQuery" value="SELECT 1" />
+        <property name="autoCommit" value="false" />
+    </bean> 
+    
+    <!-- <bean id="dataSource-tibero" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${Globals.DriverClassName}"/>
+        <property name="url" value="${Globals.Url}"/>
+        <property name="username" value="${Globals.UserName}"/>
+        <property name="password" value="${Globals.Password}"/>
+    </bean> -->
+    
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+</beans> 

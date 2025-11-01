@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.parkingWeekStatus">
+
+	<select id="select_parkWeekStatusList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			 IFNULL(TRUNCATE(SUM(CASE WHEN T.P_DD = '${index}' THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,2),0)  AS `${item.kWeekArr}`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, P_DD
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.P_COMP_CODE) AS P_COMP_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN (  
+		            				  SELECT PARKING_NO
+									       , DATE_FORMAT(P_ENT_DT, '%w') P_DD
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE 1=1 
+										 AND P_ENT_DT IS NOT NULL
+								     	 AND PARKING_STATUS IN('IN', 'OUT')
+								     	 AND DATE_FORMAT(P_ENT_DT, '%Y') = #{kYearDate}
+								     	 AND DATE_FORMAT(P_ENT_DT, '%m') = #{kMonthDate}
+									     AND DEL_YN = 'N'
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>     
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, P_DD
+		     ) T
+		 WHERE 1=1
+		
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		
+			AND T.PARKING_NO = #{kParkingNo}
+		
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		 UNION ALL
+		 SELECT T.PARKING_NAME,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			 IFNULL(TRUNCATE(SUM(CASE WHEN T.P_DD = '${index}' THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,2),0)  AS `${item.kWeekArr}`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, P_DD
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.P_COMP_CODE) AS P_COMP_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( 
+		            				 SELECT PARKING_NO
+									       , DATE_FORMAT(P_OUT_DT, '%w') P_DD
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE 1=1 
+										 AND P_OUT_DT IS NOT NULL
+								     	 AND PARKING_STATUS = 'OUT'
+								     	 AND DATE_FORMAT(P_OUT_DT, '%Y') = #{kYearDate}
+								     	 AND DATE_FORMAT(P_OUT_DT, '%m') = #{kMonthDate}
+									     AND DEL_YN = 'N'
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, P_DD
+		     ) T
+		 WHERE 1=1
+		
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		
+			AND T.PARKING_NO = #{kParkingNo}
+		
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+	</select>
+	
+	<select id="select_parkWeekStatusExcel" parameterType="commonMap" resultType="commonMap">
+		SELECT T.PARKING_NAME, '입차' AS PARKING_STATUS, '1' AS NUM,
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			 IFNULL(TRUNCATE(SUM(CASE WHEN T.P_DD = '${index}' THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,2),0)  AS `${item.kWeekArr}`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, P_DD
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.P_COMP_CODE) AS P_COMP_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( 
+		            				  SELECT PARKING_NO
+									       , DATE_FORMAT(P_ENT_DT, '%w') P_DD
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE 1=1 
+										 AND P_ENT_DT IS NOT NULL
+								     	 AND PARKING_STATUS IN('IN', 'OUT')
+								     	 AND DATE_FORMAT(P_ENT_DT, '%Y') = #{kYearDate}
+								     	 AND DATE_FORMAT(P_ENT_DT, '%m') = #{kMonthDate}
+									     AND DEL_YN = 'N'
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>    
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, P_DD
+		     ) T
+		 WHERE 1=1
+		
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		
+			AND T.PARKING_NO = #{kParkingNo}
+		
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+		 UNION ALL
+		 SELECT T.PARKING_NAME, '출차' AS PARKING_STATUS, '2' AS NUM, 
+			<foreach collection="list" item="item" index="index" open="" close="" separator=",">
+			 IFNULL(TRUNCATE(SUM(CASE WHEN T.P_DD = '${index}' THEN T.TOTAL END) / IFNULL(SUM(T.TOTAL),0) * 100 ,2),0)  AS `${item.kWeekArr}`
+		     </foreach>
+		  FROM (  SELECT A.PARKING_NO, P_DD
+		  			   , MAX(A.PARKING_NAME) AS PARKING_NAME
+		               , COUNT(B.PARKING_NO) AS TOTAL
+		               , MAX(A.P_GOV_CODE) AS P_GOV_CODE
+		               , MAX(A.P_COMP_CODE) AS P_COMP_CODE
+		               , MAX(A.GUGUN) AS GUGUN
+		            FROM T_PARKING_INFO A
+		            LEFT OUTER JOIN ( 
+		            				 SELECT PARKING_NO
+									       , DATE_FORMAT(P_OUT_DT, '%w') P_DD
+									    FROM T_PARKING_CAR_HISTORY
+									   WHERE 1=1 
+										 AND P_OUT_DT IS NOT NULL
+								     	 AND PARKING_STATUS = 'OUT'
+								     	 AND DATE_FORMAT(P_OUT_DT, '%Y') = #{kYearDate}
+								     	 AND DATE_FORMAT(P_OUT_DT, '%m') = #{kMonthDate}
+									     AND DEL_YN = 'N'
+								<choose>
+									<when test="kMemberYn eq 'N'.toString()">
+										 AND MEMBER_ID NOT IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<when test="kMemberYn eq 'Y'.toString()">
+										 AND MEMBER_ID IN (SELECT MEMBER_ID FROM T_MEMBER_INFO)
+									</when>
+									<otherwise>
+									</otherwise>
+								</choose>    
+		               ) B
+		              ON A.PARKING_NO = B.PARKING_NO
+		           WHERE A.USE_YN = 'Y'
+				   GROUP BY A.PARKING_NO, P_DD
+		     ) T
+		 WHERE 1=1
+		
+			AND T.P_GOV_CODE = #{kParkingGovCode}
+		
+			AND T.PARKING_NO = #{kParkingNo}
+		
+		 GROUP BY T.PARKING_NO, T.PARKING_NAME
+	</select>
+</mapper>

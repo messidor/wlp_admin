@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.member">
+
+	<select id="select_list" parameterType="commonMap"	resultType="commonMap">
+			SELECT ROW_NUMBER() OVER(ORDER BY A.APPLY_DT DESC, A.CONFIRM_YN ASC, A.MEMBER_NAME) AS NUM
+				 , A.MEMBER_ID, A.MEMBER_NAME, A.MEMBER_PHONE
+    	       	 , C.CAR_YN, C.CAR_YN_CODE
+    	       	 , B.CREDIT_YN, B.CREDIT_YN_CODE
+			     , D.REDUCTION_YN, D.REDUCTION_YN_CODE
+				 , F.CODE_NAME1 CONFIRM_YN_NAME, DATE_FORMAT(A.APPLY_DT, '%Y-%m-%d %H:%i:%s') APPLY_DT
+			     , E.USER_NAME CONFIRM_NAME, DATE_FORMAT(A.CONFIRM_DT, '%Y-%m-%d %H:%i:%s') CONFIRM_DT, A.CONFIRM_YN
+			     , SC.CODE_NAME1 MEMBER_GUBN, A.MEMBER_EMAIL
+			  FROM T_MEMBER_INFO A
+			  LEFT OUTER JOIN (
+	  							SELECT T1.MEMBER_ID
+                 					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, '미등록', '등록') CREDIT_YN
+                 					 , IF(IFNULL(T1.CREDIT_CNT, 0) = 0, 'N', 'Y') CREDIT_YN_CODE
+	  							  FROM (
+			  							 SELECT A.MEMBER_ID, COUNT(B.CREDIT_CODE) CREDIT_CNT
+			  							  FROM T_MEMBER_INFO A
+			  							  LEFT OUTER JOIN T_MEMBER_CREDIT B
+			  							    ON A.MEMBER_ID = B.MEMBER_ID
+			  							 GROUP BY A.MEMBER_ID
+	  							     ) T1
+			     ) B
+			    ON A.MEMBER_ID = B.MEMBER_ID
+			  LEFT OUTER JOIN (
+			 					SELECT T2.MEMBER_ID
+                 					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, '미등록', '등록') CAR_YN
+                 					 , IF(IFNULL(T2.CAR_CNT, 0) = 0, 'N', 'Y') CAR_YN_CODE
+	  							  FROM (
+			  							 SELECT MI2.MEMBER_ID, COUNT(C.CAR_NO) CAR_CNT
+			  							  FROM T_MEMBER_INFO MI2
+			  							  LEFT OUTER JOIN T_CAR_INFO C
+			  							    ON MI2.MEMBER_ID = C.MEMBER_ID
+			  							 GROUP BY MI2.MEMBER_ID
+	  							     ) T2
+			     ) C
+			    ON A.MEMBER_ID = C.MEMBER_ID
+			  LEFT OUTER JOIN (
+			                    SELECT T3.MEMBER_ID
+                 					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, '미등록', '등록') REDUCTION_YN
+                 					 , IF(IFNULL(T3.REDUCTION_CNT, 0) = 0, 'N', 'Y') REDUCTION_YN_CODE
+	  							  FROM (
+			  							 SELECT MI3.MEMBER_ID, COUNT(V.REDUCTION_CODE) REDUCTION_CNT
+						                   FROM T_MEMBER_INFO MI3
+						                   LEFT OUTER JOIN (
+						                   					SELECT MEMBER_ID,REDUCTION_CODE
+						                   					  FROM T_MEMBER_REDUCTION 
+						                   					 WHERE REDUCTION_CODE != 'A14'
+									        )V
+									      	ON MI3.MEMBER_ID = V.MEMBER_ID
+						  				    GROUP BY MI3.MEMBER_ID
+	  							     ) T3
+			     ) D
+			    ON A.MEMBER_ID = D.MEMBER_ID
+			  LEFT OUTER JOIN T_USER_INFO E
+			    ON A.CONFIRM_ID = E.USER_ID
+			  LEFT OUTER JOIN T_SYS_COMCODE F
+			    ON A.CONFIRM_YN_PARENT = F.PARENT_CODE_ID
+			   AND A.CONFIRM_YN = F.CODE_ID
+			  LEFT OUTER JOIN T_SYS_COMCODE SC
+			    ON A.MEMBER_GUBN_PARENT = SC.PARENT_CODE_ID
+			   AND A.MEMBER_GUBN = SC.CODE_ID
+			 WHERE A.USE_YN = 'Y'
+			   AND A.CONFIRM_YN = 'Y'
+			
+			<if test="kMemberName neq null and kMemberName neq ''" >
+				AND A.MEMBER_NAME = #{kMemberName}
+			</if>
+
+			<if test="kMemberPhone neq null and kMemberPhone neq ''" >
+				AND A.MEMBER_PHONE = #{kMemberPhone}
+			</if>
+			
+			<if test="kMemberEmail neq null and kMemberEmail neq ''" >
+				AND A.MEMBER_EMAIL = #{kMemberEmail}
+			</if>
+			
+			<if test="kMemberGubn neq null and kMemberGubn neq ''" >
+				AND A.MEMBER_GUBN = #{kMemberGubn}
+			</if>
+			
+			<if test="kCarYn neq null and kCarYn neq ''" >
+				AND C.CAR_YN_CODE = #{kCarYn}
+			</if>
+			
+			<if test="kCreditYn neq null and kCreditYn neq ''" >
+				AND B.CREDIT_YN_CODE = #{kCreditYn}
+			</if>
+			
+			<if test="kReductionYn neq null and kReductionYn neq ''" >
+				AND D.REDUCTION_YN_CODE = #{kReductionYn}
+			</if>
+			
+			ORDER BY A.APPLY_DT DESC, A.CONFIRM_YN ASC, A.MEMBER_NAME
+	</select>
+	
+	<select id="select_member_status" parameterType="commonMap"	resultType="commonMap">
+		SELECT CONFIRM_YN
+		  FROM T_MEMBER_INFO
+		 WHERE MEMBER_ID = #{grdMemberId}
+	</select>
+	
+	<update id="update_member_confirm">
+		UPDATE T_MEMBER_INFO
+		   SET CONFIRM_YN = 'Y'
+		     , CONFIRM_ID = #{userId}
+		     , CONFIRM_DT = NOW()
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE MEMBER_ID = #{grdMemberId}
+	</update>
+	
+	<select id="select_YesOrNo" parameterType="commonMap"	resultType="commonMap">
+		SELECT 'N' AS VALUE, '미등록' AS TEXT
+  		  FROM DUAL
+ 		 UNION 
+		SELECT 'Y' AS VALUE, '등록' AS TEXT
+  		  FROM DUAL
+	</select>
+	
+	<select id="select_carRegDt" parameterType="commonMap"	resultType="commonMap">
+		SELECT DATE_FORMAT(MOD_DT, '%m월 %d일 %H시 %i분') AS MOD_DT
+		  FROM T_CAR_INFO
+		 WHERE MEMBER_ID = #{memberId}
+		   AND CAR_NO = #{kCarNum}
+	</select>
+	
+</mapper>

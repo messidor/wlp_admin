@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.member.memberFullManagePopup">
+	
+	<!-- 회원 정보 -->
+	<select id="select_memberCar" parameterType="commonMap"	resultType="commonMap">
+			SELECT CI.CAR_NO
+			     , MI.MEMBER_ID
+			     , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE MI.MSG_TYPE_PARENT = PARENT_CODE_ID AND MI.MSG_TYPE = CODE_ID) AS MSG_TYPE_NAME
+			     , MI.MEMBER_EMAIL
+			     , MI.MEMBER_PHONE
+			     , MI.MEMBER_NAME
+			  FROM T_CAR_INFO CI
+			 INNER JOIN T_MEMBER_INFO MI
+			    ON CI.MEMBER_ID = MI.MEMBER_ID
+			 WHERE 1=1
+			<if test="kCarNumber neq null and kCarNumber neq ''" >
+				AND CAR_NO = #{kCarNumber}
+			</if>
+	</select>
+	
+	<!-- 차량 정보(승인된 차량)-->
+	<select id="select_carInfo" parameterType="commonMap"	resultType="commonMap">
+			SELECT A.CAR_NO
+			     , A.CAR_ALIAS
+			     , CONCAT(F.FILE_PATH , F.FILE_NAME , '.' , F.FILE_EXT) AS FILE_NAME
+			     , CONCAT(F.FILE_NAME , '.' , F.FILE_EXT) AS NAME
+			     , CONCAT(F.ORIG_FILE_NAME , '.' , F.FILE_EXT) AS DISP_FILE_NAME
+			     , F.FILE_EXT
+			  FROM T_CAR_INFO A
+			  LEFT OUTER JOIN T_FILE_RELATION R
+			    ON A.FILE_REL_KEY = R.FILE_REL_KEY
+			  LEFT OUTER JOIN T_FILE_INFO F
+			    ON R.FILE_KEY = F.FILE_KEY
+			 WHERE A.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<!-- 카드 정보 -->
+	<select id="select_creditInfo" parameterType="commonMap"	resultType="commonMap">
+		SELECT B.CODE_NAME1 CREDIT_COMP, A.CREDIT_NO, A.CREDIT_NO2, A.CREDIT_NO3, A.CREDIT_NO4
+			 , A.CREDIT_EXP_DATE
+		     , A.REP_YN, A.AUTO_PAY_YN
+ 		  FROM T_MEMBER_CREDIT A
+ 		  LEFT OUTER JOIN T_SYS_COMCODE B
+ 		    ON A.CREDIT_COMP_PARENT = B.PARENT_CODE_ID
+ 		   AND A.CREDIT_COMP = B.CODE_ID
+		 WHERE A.MEMBER_ID = #{hMemberId}
+	</select>
+	
+	<!-- 감면 정보 (인적 감면 승인 + 차량 승인)-->
+	<select id="select_reductionInfo" parameterType="commonMap"	resultType="commonMap">
+		SELECT REDUCTION_NAME, REDUCTION_RATE, RED_EXP_DATE, REDUCTION_ORDER
+		  FROM (
+				SELECT REDUCTION_NAME, REDUCTION_RATE, REDUCTION_ORDER
+     				 , DATE_FORMAT(RED_EXP_DATE, '%Y-%m-%d') AS RED_EXP_DATE
+				  FROM (
+					    SELECT RI.REDUCTION_NAME
+					         , CONCAT(RI.REDUCTION_RATE, '%') REDUCTION_RATE
+					         , MR.RED_EXP_DATE
+					         , RI.REDUCTION_ORDER
+					      FROM T_MEMBER_REDUCTION MR
+					     INNER JOIN T_REDUCTION_INFO RI
+					        ON MR.REDUCTION_CODE = RI.REDUCTION_CODE
+				  	     WHERE MR.MEMBER_ID = #{hMemberId}
+					     UNION ALL
+					    SELECT RI.REDUCTION_NAME
+					         , CONCAT(RI.REDUCTION_RATE, '%') REDUCTION_RATE
+					         , CR.RED_EXP_DATE
+					         , RI.REDUCTION_ORDER
+					      FROM T_CAR_REDUCTION CR
+					     INNER JOIN T_REDUCTION_INFO RI
+					        ON CR.REDUCTION_CODE = RI.REDUCTION_CODE
+					     WHERE CR.MEMBER_ID = #{hMemberId}
+						   AND CR.USE_YN = 'Y'
+				     ) A
+				 GROUP BY REDUCTION_NAME, REDUCTION_RATE, REDUCTION_ORDER, RED_EXP_DATE
+				 ORDER BY REDUCTION_ORDER
+				 LIMIT 3
+			  ) T
+	</select>
+	
+	<!-- 미납 내역 -->
+	<select id="select_NonPaymentList" parameterType="commonMap"	resultType="commonMap">
+		SELECT MAX(A.CHARGE_NO) AS CHARGE_NO, A.CAR_NO, MAX(A.PARKING_NO) AS PARKING_NO, D.P_GOV_CODE
+		     , MAX(B.PARKING_NAME) AS PARKING_NAME, MAX(D.P_GOV_NAME) AS P_GOV_NAME
+		     , CONCAT(FORMAT(MAX(A.PARKING_PRICE), 0) , '원') AS PARKING_PRICE
+		     , DATE_FORMAT(MAX(C.P_ENT_DT), '%Y-%m-%d %H:%i:%s') P_ENT_DT
+		     , DATE_FORMAT(MAX(C.P_OUT_DT), '%Y-%m-%d %H:%i:%s') P_OUT_DT
+		     , DATE_FORMAT(MAX(A.REG_DT), '%Y-%m-%d %H:%i') REG_DT
+		  FROM T_PARKING_CHARGE A
+		 INNER JOIN T_PARKING_INFO B
+		    ON A.PARKING_NO = B.PARKING_NO
+		 INNER JOIN T_PARKING_CAR_HISTORY C
+		    ON A.HISTORY_CODE = C.HISTORY_CODE
+		 INNER JOIN T_PARKING_GOV_INFO D
+		    ON B.P_GOV_CODE = D.P_GOV_CODE
+		 INNER JOIN T_PARKING_GOV_BANK_INFO E
+		    ON B.P_GOV_CODE = E.P_GOV_CODE
+		   AND B.P_GOV_ACCOUNT_CODE = E.P_GOV_ACCOUNT_CODE
+		 WHERE A.MEMBER_ID = #{hMemberId}
+		   AND A.CAR_NO = #{kCarNumber}
+		   AND A.PAY_GUBN = 'PG006'
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND B.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+		 GROUP BY A.CAR_NO, D.P_GOV_CODE, E.P_GOV_ACCOUNT_CODE
+		 ORDER BY MAX(C.P_OUT_DT)
+		 LIMIT 3
+	</select>
+	
+	<!-- 최근 입차내역 -->
+	<select id="select_parkingInList" parameterType="commonMap" resultType="commonMap">
+		SELECT Y.NUM
+			  , Y.CAR_NO
+			  , Y.PARKING_NAME
+			  , Y.P_ENT_DT
+			  , Y.P_OUT_DT
+			  , Y.PARKING_STATUS
+			  , Y.STATUS_NAME
+			  , Y.CNT
+			  , Y.NO
+		   FROM ( SELECT ROW_NUMBER() OVER(ORDER BY A.P_ENT_DT DESC) AS NO
+		   			   , ROW_NUMBER() OVER(ORDER BY A.P_ENT_DT DESC) AS NUM
+  					   , A.CAR_NO
+					   , B.PARKING_NAME
+					   , IF(A.P_ENT_DT IS NOT NULL, DATE_FORMAT(A.P_ENT_DT, '%Y-%m-%d %H:%i:%s'), '-') AS P_ENT_DT
+					   , IF(A.P_OUT_DT IS NOT NULL, DATE_FORMAT(A.P_OUT_DT, '%Y-%m-%d %H:%i:%s'), '-') AS P_OUT_DT
+					   , A.PARKING_STATUS
+					   , C.CODE_NAME1 AS STATUS_NAME
+					   , COUNT(*) OVER() AS CNT
+				    FROM T_PARKING_CAR_HISTORY A
+				   INNER JOIN T_PARKING_INFO B
+				      ON A.PARKING_NO = B.PARKING_NO
+				    LEFT OUTER JOIN T_SYS_COMCODE C
+				      ON A.PARKING_STATUS_PARENT = C.PARENT_CODE_ID
+				     AND A.PARKING_STATUS = C.CODE_ID
+				   WHERE A.MEMBER_ID = #{hMemberId}
+				     AND A.CAR_NO = #{kCarNumber}
+				   	 AND A.P_ENT_DT IS NOT NULL
+				  ) Y
+		   <![CDATA[WHERE Y.NUM <= 3 AND Y.NUM >= 1]]>
+	</select>
+	
+	<!-- 최근 출차내역 -->
+	<select id="select_parkingOutList" parameterType="commonMap" resultType="commonMap">
+		SELECT Y.NUM
+			  , Y.CAR_NO
+			  , Y.PARKING_NAME
+			  , Y.P_ENT_DT
+			  , Y.P_OUT_DT
+			  , Y.PARKING_STATUS
+			  , Y.STATUS_NAME
+			  , Y.CNT
+			  , Y.NO
+		   FROM ( SELECT ROW_NUMBER() OVER(ORDER BY A.P_OUT_DT DESC) AS NO
+		   			   , ROW_NUMBER() OVER(ORDER BY A.P_OUT_DT DESC) AS NUM
+  					   , A.CAR_NO
+					   , B.PARKING_NAME
+					   , IF(A.P_ENT_DT IS NOT NULL, DATE_FORMAT(A.P_ENT_DT, '%Y-%m-%d %H:%i:%s'), '-') AS P_ENT_DT
+					   , IF(A.P_OUT_DT IS NOT NULL, DATE_FORMAT(A.P_OUT_DT, '%Y-%m-%d %H:%i:%s'), '-') AS P_OUT_DT
+					   , A.PARKING_STATUS
+					   , C.CODE_NAME1 AS STATUS_NAME
+					   , COUNT(*) OVER() AS CNT
+				    FROM T_PARKING_CAR_HISTORY A
+				   INNER JOIN T_PARKING_INFO B
+				      ON A.PARKING_NO = B.PARKING_NO
+				    LEFT OUTER JOIN T_SYS_COMCODE C
+				      ON A.PARKING_STATUS_PARENT = C.PARENT_CODE_ID
+				     AND A.PARKING_STATUS = C.CODE_ID
+				   WHERE A.MEMBER_ID = #{hMemberId}
+				     AND A.CAR_NO = #{kCarNumber}
+				   	 AND A.P_OUT_DT IS NOT NULL
+				   	 AND A.PARKING_STATUS = 'OUT'
+				  ) Y
+		   <![CDATA[WHERE Y.NUM <= 3 AND Y.NUM >= 1]]>
+	</select>
+	
+	
+	<!-- 최근 입/출차내역 -->
+	<select id="select_parkingInOutList" parameterType="commonMap" resultType="commonMap">
+		SELECT Y.NUM
+			  , Y.CAR_NO
+			  , Y.PARKING_NAME
+			  , Y.P_ENT_DT
+			  , Y.P_OUT_DT
+			  , Y.PARKING_STATUS
+			  , Y.STATUS_NAME
+			  , Y.CNT
+			  , Y.NO
+		   FROM ( SELECT ROW_NUMBER() OVER(ORDER BY A.P_ENT_DT DESC) AS NO
+		   			   , ROW_NUMBER() OVER(ORDER BY A.P_ENT_DT DESC) AS NUM
+  					   , A.CAR_NO
+					   , B.PARKING_NAME
+					   , IF(A.P_ENT_DT IS NOT NULL, DATE_FORMAT(A.P_ENT_DT, '%Y-%m-%d %H:%i'), '-') AS P_ENT_DT
+					   , IF(A.P_OUT_DT IS NOT NULL, DATE_FORMAT(A.P_OUT_DT, '%Y-%m-%d %H:%i'), '-') AS P_OUT_DT
+					   , A.PARKING_STATUS
+					   , C.CODE_NAME1 AS STATUS_NAME
+					   , COUNT(*) OVER() AS CNT
+					   , B.P_GOV_CODE
+				    FROM T_PARKING_CAR_HISTORY A
+				   INNER JOIN T_PARKING_INFO B
+				      ON A.PARKING_NO = B.PARKING_NO
+				    LEFT OUTER JOIN T_SYS_COMCODE C
+				      ON A.PARKING_STATUS_PARENT = C.PARENT_CODE_ID
+				     AND A.PARKING_STATUS = C.CODE_ID
+				   WHERE A.MEMBER_ID = #{hMemberId}
+				     AND A.CAR_NO = #{kCarNumber}
+				  ) Y
+			  WHERE 1=1
+			<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			    AND Y.P_GOV_CODE = #{kParkingGovCode}
+			</if>
+			  LIMIT 3
+	</select>
+	
+	<!-- 결제 내역 -->
+	<select id="select_paymentList" parameterType="commonMap" resultType="commonMap">
+		  SELECT T.*
+		    FROM (SELECT MAX(Z.PARKING_NAME) AS PARKING_NAME
+			  		   , MAX(Z.CAR_NO) AS CAR_NO
+			  		   , MAX(Z.MEMBER_NAME) AS MEMBER_NAME
+			  		   , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+			  		   , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+			  		   , MAX(Z.PAY_GUBN) AS PAY_GUBN
+			  		   , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+			  		   , MAX(Z.CHARGE_NO) AS CHARGE_NO
+			  		   , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+			  		   , MAX(Z.PAYMENT_GUBN_NAME) AS PAYMENT_GUBN_NAME
+			  		   , MAX(Z.REG_DT) AS REG_DT
+			  		   , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+			  		   , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+			  		   , Z.PAY_CODE
+			  		   , CASE WHEN MAX(Z.PARKING_PRICE_ORIG) > 0 AND MAX(Z.PAY_GUBN) = 'PG001' THEN '결제취소' ELSE '' END AS PAY_CANCEL_GUBN
+			  		   , CASE WHEN MAX(Z.PARKING_PRICE_ORIG) > 0 AND MAX(Z.PAY_GUBN) = 'PG001' AND MAX(Z.PAYMENT_GUBN) != 'N' THEN '재결제' ELSE '' END AS PAY_RE_GUBN
+			  		   , ROW_NUMBER() OVER(ORDER BY MAX(Z.REG_DT) DESC) AS NUM
+			  	    FROM ( SELECT C.PARKING_NAME
+					  	        , A.CAR_NO
+					  	        , B.MEMBER_NAME
+					  	        , B.MEMBER_PHONE
+					  	        , CONCAT(FORMAT(IFNULL(F.PAY_PRICE,0), 0) , '원') AS PARKING_PRICE
+					  	        , IFNULL(F.PAY_PRICE,0) AS PARKING_PRICE_ORIG
+					  	        , A.PAY_GUBN
+					  	        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE A.PAY_GUBN_PARENT = PARENT_CODE_ID AND A.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+					  	        , A.CHARGE_NO
+					  	        , A.PARKING_NO
+					  	        , E.PAYMENT_GUBN
+					  	        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = E.PAYMENT_GUBN_PARENT AND CODE_ID = E.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+					  	        , C.P_GOV_CODE
+					  	        , D.P_GOV_NAME
+					  	        , F.PAY_CODE
+					  	        , DATE_FORMAT(F.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+					   	     FROM T_PARKING_CHARGE A
+					   	    INNER JOIN T_PARKING_PAY F
+					   	       ON A.PAY_CODE = F.PAY_CODE
+					        INNER JOIN T_MEMBER_INFO B
+					           ON A.MEMBER_ID = B.MEMBER_ID
+					        INNER JOIN T_PARKING_INFO C
+					           ON A.PARKING_NO = C.PARKING_NO
+					        INNER JOIN T_PARKING_GOV_INFO D
+					           ON C.P_GOV_CODE = D.P_GOV_CODE
+					        INNER JOIN ( SELECT V.PAY_CODE, V.PAYMENT_GUBN_PARENT, V.PAYMENT_GUBN, V.PC_GUBN, V.REG_DT
+						                   FROM T_PARKING_PAY V
+						                  INNER JOIN ( SELECT PAY_CODE, MAX(PAY_SEQ) PAY_SEQ
+														 FROM T_PARKING_PAY
+													    GROUP BY PAY_CODE
+											   ) V2
+										      ON V.PAY_CODE = V2.PAY_CODE
+											 AND V.PAY_SEQ = V2.PAY_SEQ
+					            ) E
+					           ON A.PAY_CODE = E.PAY_CODE
+						    WHERE F.CONFIRM_YN != 'C'
+							  AND A.CAR_NO = #{kCarNumber}
+							  AND A.PAY_GUBN = 'PG001'
+					  ) Z
+		          WHERE 1=1
+				<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+				    AND Z.P_GOV_CODE = #{kParkingGovCode}
+				</if>
+				 GROUP BY Z.PAY_CODE
+				 <!-- ORDER BY MAX(Z.REG_DT) DESC -->
+		       ) T
+		<![CDATA[WHERE T.NUM <= 3 AND T.NUM >= 1]]>
+	</select>
+	
+	<!-- 결제취소 신청내역 -->
+	<select id="select_cancelPaymentList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.*
+		  FROM (  SELECT Z.PAY_CODE
+			           , Z.PAY_SEQ
+			           , MAX(Z.CANCEL_STATUS_NAME) AS CANCEL_STATUS_NAME
+			           , MAX(Z.CANCEL_STATUS) AS CANCEL_STATUS
+			           , MAX(Z.CAR_NO) AS CAR_NO
+			           , MAX(Z.PAY_GUBN) AS PAY_GUBN
+			           , MAX(Z.CHARGE_NO) AS CHARGE_NO
+			           , MAX(Z.PARKING_NO) AS PARKING_NO
+			           , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+			           , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+			           , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+			           , MAX(Z.PAYMENT_GUBN_NAME) AS PAYMENT_GUBN_NAME
+			           , MAX(Z.MEMBER_NAME) AS MEMBER_NAME
+			           , MAX(Z.MEMBER_ID) AS MEMBER_ID
+			           , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+			           , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+			           , MAX(Z.REG_DT) AS REG_DT
+			           , MAX(Z.PAY_DT) AS PAY_DT
+			           , CASE WHEN MAX(Z.PAYMENT_GUBN) = 'A' THEN MAX(Z.PARKING_NAME)
+						      WHEN MAX(Z.PAYMENT_GUBN) = 'N' THEN ''
+						      ELSE '' END AS PARKING_NAME
+			           , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+			           , Z.APPLY_CODE
+			           , Z.P_GOV_ACCOUNT_NAME
+			           , Z.P_GOV_ACCOUNT_NUMBER
+			           , ROW_NUMBER() OVER(ORDER BY MAX(Z.REG_DT) DESC) AS NUM
+			   	    FROM ( SELECT PPC.PAY_CODE
+						        , PPC.PAY_SEQ
+						        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PPC.CANCEL_STATUS_PARENT AND CODE_ID = PPC.CANCEL_STATUS) AS CANCEL_STATUS_NAME
+						        , PPC.CANCEL_STATUS
+						        , PC.CAR_NO
+						        , PC.PAY_GUBN
+						        , PC.CHARGE_NO
+						        , PC.PARKING_NO
+						        , CONCAT(FORMAT(IFNULL(PP.PAY_PRICE, 0), 0) , '원') AS PARKING_PRICE
+						        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PC.PAY_GUBN_PARENT = PARENT_CODE_ID AND PC.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+						        , PP.PAYMENT_GUBN
+								, (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PP.PAYMENT_GUBN_PARENT AND CODE_ID = PP.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+								, MI.MEMBER_NAME
+								, MI.MEMBER_ID
+								, MI.MEMBER_PHONE
+								, PI.P_GOV_CODE
+								, PPC.REG_DT
+								, PI.PARKING_NAME
+								, PGI.P_GOV_NAME
+								, PPC.APPLY_CODE
+								, PGBI.P_GOV_ACCOUNT_NAME
+								, PGBI.P_GOV_ACCOUNT_NUMBER
+								, PP.REG_DT AS PAY_DT
+							 FROM T_PARKING_PAY_CANCEL PPC
+							INNER JOIN T_PARKING_CHARGE PC
+							   ON PPC.PAY_CODE = PC.PAY_CODE
+							INNER JOIN T_PARKING_PAY PP
+							   ON PPC.PAY_CODE = PP.PAY_CODE   
+							INNER JOIN T_MEMBER_INFO MI
+							   ON PC.MEMBER_ID = MI.MEMBER_ID
+							INNER JOIN T_PARKING_INFO PI
+							   ON PC.PARKING_NO = PI.PARKING_NO
+							INNER JOIN T_PARKING_GOV_INFO PGI
+					           ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+					        INNER JOIN T_PARKING_GOV_BANK_INFO PGBI
+					           ON PI.P_GOV_CODE = PGBI.P_GOV_CODE
+					          AND PI.P_GOV_ACCOUNT_CODE = PGBI.P_GOV_ACCOUNT_CODE
+						    WHERE MI.CONFIRM_YN = 'Y'
+						      AND PC.CAR_NO = #{kCarNumber}
+			        ) Z
+			    WHERE 1=1
+				GROUP BY Z.PAY_CODE, Z.PAY_SEQ, Z.APPLY_CODE, Z.P_GOV_ACCOUNT_NUMBER, Z.P_GOV_ACCOUNT_NAME
+		     ) T
+	    <!-- ORDER BY MAX(Z.REG_DT) DESC -->
+	    <![CDATA[WHERE T.NUM <= 3 AND T.NUM >= 1]]>
+	</select>
+	
+	<!-- 재결제 신청내역 -->
+	<select id="select_nonPaymentList" parameterType="commonMap" resultType="commonMap">
+		SELECT T.*
+		  FROM (  SELECT Z.PAY_CODE
+			           , Z.PAY_SEQ
+			           , MAX(Z.REPAY_STATUS_NAME) AS REPAY_STATUS_NAME
+			           , MAX(Z.REPAY_STATUS) AS REPAY_STATUS
+			           , MAX(Z.CAR_NO) AS CAR_NO
+			           , MAX(Z.PAY_GUBN) AS PAY_GUBN
+			           , MAX(Z.CHARGE_NO) AS CHARGE_NO
+			           , MAX(Z.PARKING_NO) AS PARKING_NO
+			           , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+			           , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+			           , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+			           , MAX(Z.PAYMENT_GUBN_NAME) AS PAYMENT_GUBN_NAME
+			           , MAX(Z.MEMBER_NAME) AS MEMBER_NAME
+			           , MAX(Z.MEMBER_ID) AS MEMBER_ID
+			           , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+			           , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+			           , MAX(Z.REG_DT) AS REG_DT
+			           , MAX(Z.PAY_DT) AS PAY_DT
+			           , CASE WHEN MAX(Z.PAYMENT_GUBN) = 'A' THEN MAX(Z.PARKING_NAME)
+						      WHEN MAX(Z.PAYMENT_GUBN) = 'N' THEN ''
+						      ELSE '' END AS PARKING_NAME
+			           , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+			           , Z.APPLY_CODE
+			           , Z.P_GOV_ACCOUNT_NAME
+			           , Z.P_GOV_ACCOUNT_NUMBER
+			           , ROW_NUMBER() OVER(ORDER BY MAX(Z.PAY_DT) DESC) AS NUM
+			   	    FROM ( SELECT PPR.PAY_CODE
+						        , PPR.PAY_SEQ
+						        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PPR.REPAY_STATUS_PARENT AND CODE_ID = PPR.REPAY_STATUS) AS REPAY_STATUS_NAME
+						        , PPR.REPAY_STATUS
+						        , PC.CAR_NO
+						        , PC.PAY_GUBN
+						        , PC.CHARGE_NO
+						        , PC.PARKING_NO
+						        , CONCAT(FORMAT(IFNULL(PP.PAY_PRICE, 0), 0) , '원') AS PARKING_PRICE
+						        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PC.PAY_GUBN_PARENT = PARENT_CODE_ID AND PC.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+						        , PP.PAYMENT_GUBN
+								, (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PP.PAYMENT_GUBN_PARENT AND CODE_ID = PP.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+								, MI.MEMBER_NAME
+								, MI.MEMBER_ID
+								, MI.MEMBER_PHONE
+								, PI.P_GOV_CODE
+								, PPR.REG_DT
+								, PI.PARKING_NAME
+								, PGI.P_GOV_NAME
+								, PPR.APPLY_CODE
+								, PGBI.P_GOV_ACCOUNT_NAME
+								, PGBI.P_GOV_ACCOUNT_NUMBER
+								, PP.REG_DT AS PAY_DT
+							 FROM T_PARKING_PAY_RE PPR
+							INNER JOIN T_PARKING_CHARGE PC
+							   ON PPR.PAY_CODE = PC.PAY_CODE
+							INNER JOIN T_PARKING_PAY PP
+							   ON PPR.PAY_CODE = PP.PAY_CODE
+							INNER JOIN T_MEMBER_INFO MI
+							   ON PC.MEMBER_ID = MI.MEMBER_ID
+							INNER JOIN T_PARKING_INFO PI
+							   ON PC.PARKING_NO = PI.PARKING_NO
+							INNER JOIN T_PARKING_GOV_INFO PGI
+					           ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+					        INNER JOIN T_PARKING_GOV_BANK_INFO PGBI
+					           ON PI.P_GOV_CODE = PGBI.P_GOV_CODE
+					          AND PI.P_GOV_ACCOUNT_CODE = PGBI.P_GOV_ACCOUNT_CODE
+						    WHERE MI.CONFIRM_YN = 'Y'
+						      AND PC.CAR_NO = #{kCarNumber}
+			        ) Z
+			    WHERE 1=1
+				GROUP BY Z.PAY_CODE, Z.PAY_SEQ, Z.APPLY_CODE, Z.P_GOV_ACCOUNT_NAME, Z.P_GOV_ACCOUNT_NUMBER
+			    <!-- ORDER BY MAX(Z.REG_DT) DESC -->
+		     ) T
+	    <![CDATA[WHERE T.NUM <= 3 AND T.NUM >= 1]]>
+	</select>
+	
+	<select id="select_carNo" parameterType="commonMap" resultType="commonMap">
+		 SELECT CI.CAR_NO AS VALUE
+	          , CONCAT(CI.CAR_NO , '(' , MI.MEMBER_NAME , ')') AS TEXT
+	          , CI.CAR_NO AS NAME
+	   	   FROM T_CAR_INFO CI
+	   	   LEFT OUTER JOIN T_MEMBER_INFO MI
+	   	     ON CI.MEMBER_ID = MI.MEMBER_ID
+	 	  WHERE CI.USE_YN = 'Y'
+		<if test="q neq null and q neq ''" >
+			AND (CI.CAR_NO LIKE '%${q}%' OR CAR_NO LIKE '%${q}%')
+		</if>
+	</select>
+	
+	<!-- 취소, 재결재 내역 -->
+	<select id="select_cancelRePaymentList" parameterType="commonMap" resultType="commonMap">
+		SELECT * 
+		  FROM ( SELECT X.*
+				  	  ,  ROW_NUMBER() OVER(ORDER BY X.REG_DT DESC) AS NUM
+				   FROM ( SELECT Z.PAY_CODE
+					           , Z.PAY_SEQ
+					           , MAX(Z.CANCEL_STATUS_NAME) AS CANCEL_STATUS_NAME
+					           , MAX(Z.CANCEL_STATUS) AS CANCEL_STATUS
+					           , MAX(Z.CAR_NO) AS CAR_NO
+					           , MAX(Z.PAY_GUBN) AS PAY_GUBN
+					           , MAX(Z.CHARGE_NO) AS CHARGE_NO
+					           , MAX(Z.PARKING_NO) AS PARKING_NO
+					           , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+					           , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+					           , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+					           , MAX(Z.PAYMENT_GUBN_NAME) AS PAYMENT_GUBN_NAME
+					           , MAX(Z.MEMBER_NAME) AS MEMBER_NAME
+					           , MAX(Z.MEMBER_ID) AS MEMBER_ID
+					           , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+					           , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+					           , MAX(Z.REG_DT) AS REG_DT
+					           , MAX(Z.PAY_DT) AS PAY_DT
+					           , CASE WHEN MAX(Z.PAYMENT_GUBN) = 'A' THEN MAX(Z.PARKING_NAME)
+								      WHEN MAX(Z.PAYMENT_GUBN) = 'N' THEN ''
+								      ELSE '' END AS PARKING_NAME
+					           , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+					           , Z.APPLY_CODE
+					           , Z.P_GOV_ACCOUNT_NAME
+					           , Z.P_GOV_ACCOUNT_NUMBER
+					           , Z.N_PARKING_PRICE
+					           , Z.REJECT_REASON
+					   	    FROM ( SELECT PPC.PAY_CODE
+								        , PPC.PAY_SEQ
+								        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PPC.CANCEL_STATUS_PARENT AND CODE_ID = PPC.CANCEL_STATUS) AS CANCEL_STATUS_NAME
+								        , PPC.CANCEL_STATUS
+								        , PC.CAR_NO
+								        , PC.PAY_GUBN
+								        , PC.CHARGE_NO
+								        , PC.PARKING_NO
+								        , CONCAT(FORMAT(IFNULL(PP.PAY_PRICE, 0), 0) , '원') AS PARKING_PRICE
+								        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PC.PAY_GUBN_PARENT = PARENT_CODE_ID AND PC.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+								        , PP.PAYMENT_GUBN
+										, (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PP.PAYMENT_GUBN_PARENT AND CODE_ID = PP.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+										, MI.MEMBER_NAME
+										, MI.MEMBER_ID
+										, MI.MEMBER_PHONE
+										, PI.P_GOV_CODE
+										, DATE_FORMAT(PPC.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+										, PI.PARKING_NAME
+										, PGI.P_GOV_NAME
+										, PPC.APPLY_CODE
+										, PGBI.P_GOV_ACCOUNT_NAME
+										, PGBI.P_GOV_ACCOUNT_NUMBER
+										, PP.REG_DT AS PAY_DT
+										, '0원' AS N_PARKING_PRICE
+										, PPC.REJECT_REASON
+									 FROM T_PARKING_PAY_CANCEL PPC
+									INNER JOIN T_PARKING_CHARGE PC
+									   ON PPC.PAY_CODE = PC.PAY_CODE
+									INNER JOIN T_PARKING_PAY PP
+									   ON PPC.PAY_CODE = PP.PAY_CODE   
+									INNER JOIN T_MEMBER_INFO MI
+									   ON PC.MEMBER_ID = MI.MEMBER_ID
+									INNER JOIN T_PARKING_INFO PI
+									   ON PC.PARKING_NO = PI.PARKING_NO
+									INNER JOIN T_PARKING_GOV_INFO PGI
+							           ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+							        INNER JOIN T_PARKING_GOV_BANK_INFO PGBI
+							           ON PI.P_GOV_CODE = PGBI.P_GOV_CODE
+							          AND PI.P_GOV_ACCOUNT_CODE = PGBI.P_GOV_ACCOUNT_CODE
+								    WHERE MI.CONFIRM_YN = 'Y'
+								      AND PC.CAR_NO = #{kCarNumber}
+								      AND PC.PAY_GUBN = 'PG002'
+							   ) Z
+						   WHERE 1=1
+						   GROUP BY Z.PAY_CODE, Z.PAY_SEQ, Z.APPLY_CODE, Z.P_GOV_ACCOUNT_NUMBER, Z.P_GOV_ACCOUNT_NAME, Z.N_PARKING_PRICE, Z.REJECT_REASON
+			     		   UNION
+						  SELECT Z.PAY_CODE
+					           , Z.PAY_SEQ
+					           , MAX(Z.REPAY_STATUS_NAME) AS REPAY_STATUS_NAME
+					           , MAX(Z.REPAY_STATUS) AS REPAY_STATUS
+					           , MAX(Z.CAR_NO) AS CAR_NO
+					           , MAX(Z.PAY_GUBN) AS PAY_GUBN
+					           , MAX(Z.CHARGE_NO) AS CHARGE_NO
+					           , MAX(Z.PARKING_NO) AS PARKING_NO
+					           , MAX(Z.PARKING_PRICE) AS PARKING_PRICE
+					           , MAX(Z.PAY_GUBN_NAME) AS PAY_GUBN_NAME
+					           , MAX(Z.PAYMENT_GUBN) AS PAYMENT_GUBN
+					           , MAX(Z.PAYMENT_GUBN_NAME) AS PAYMENT_GUBN_NAME
+					           , MAX(Z.MEMBER_NAME) AS MEMBER_NAME
+					           , MAX(Z.MEMBER_ID) AS MEMBER_ID
+					           , MAX(Z.MEMBER_PHONE) AS MEMBER_PHONE
+					           , MAX(Z.P_GOV_CODE) AS P_GOV_CODE
+					           , MAX(Z.REG_DT) AS REG_DT
+					           , MAX(Z.PAY_DT) AS PAY_DT
+					           , CASE WHEN MAX(Z.PAYMENT_GUBN) = 'A' THEN MAX(Z.PARKING_NAME)
+								      WHEN MAX(Z.PAYMENT_GUBN) = 'N' THEN ''
+								      ELSE '' END AS PARKING_NAME
+					           , MAX(Z.P_GOV_NAME) AS P_GOV_NAME
+					           , Z.APPLY_CODE
+					           , Z.P_GOV_ACCOUNT_NAME
+					           , Z.P_GOV_ACCOUNT_NUMBER
+					           , Z.N_PARKING_PRICE
+					           , Z.REJECT_REASON
+					   	    FROM ( SELECT PPR.PAY_CODE
+								        , PPR.PAY_SEQ
+								        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PPR.REPAY_STATUS_PARENT AND CODE_ID = PPR.REPAY_STATUS) AS REPAY_STATUS_NAME
+								        , PPR.REPAY_STATUS
+								        , PC.CAR_NO
+								        , PC.PAY_GUBN
+								        , PC.CHARGE_NO
+								        , PC.PARKING_NO
+								        , CONCAT(FORMAT(IFNULL(PP.PAY_PRICE, 0), 0) , '원') AS PARKING_PRICE
+								        , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PC.PAY_GUBN_PARENT = PARENT_CODE_ID AND PC.PAY_GUBN = CODE_ID) AS PAY_GUBN_NAME
+								        , PP.PAYMENT_GUBN
+										, (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = PP.PAYMENT_GUBN_PARENT AND CODE_ID = PP.PAYMENT_GUBN) AS PAYMENT_GUBN_NAME
+										, MI.MEMBER_NAME
+										, MI.MEMBER_ID
+										, MI.MEMBER_PHONE
+										, PI.P_GOV_CODE
+										, DATE_FORMAT(PPR.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+										, PI.PARKING_NAME
+										, PGI.P_GOV_NAME
+										, PPR.APPLY_CODE
+										, PGBI.P_GOV_ACCOUNT_NAME
+										, PGBI.P_GOV_ACCOUNT_NUMBER
+										, PP.REG_DT AS PAY_DT
+								        , CONCAT(FORMAT(IFNULL(PCC.PARKING_PRICE, 0), 0) , '원') AS N_PARKING_PRICE
+								        , PPR.REJECT_REASON
+									 FROM T_PARKING_PAY_RE PPR
+									INNER JOIN T_PARKING_CHARGE PC
+									   ON PPR.PAY_CODE = PC.PAY_CODE
+									INNER JOIN T_PARKING_PAY PP
+									   ON PPR.PAY_CODE = PP.PAY_CODE
+									INNER JOIN T_MEMBER_INFO MI
+									   ON PC.MEMBER_ID = MI.MEMBER_ID
+									INNER JOIN T_PARKING_INFO PI
+									   ON PC.PARKING_NO = PI.PARKING_NO
+									INNER JOIN T_PARKING_GOV_INFO PGI
+							           ON PI.P_GOV_CODE = PGI.P_GOV_CODE
+							        INNER JOIN T_PARKING_GOV_BANK_INFO PGBI
+							           ON PI.P_GOV_CODE = PGBI.P_GOV_CODE
+							          AND PI.P_GOV_ACCOUNT_CODE = PGBI.P_GOV_ACCOUNT_CODE
+							         LEFT OUTER JOIN T_PARKING_CHARGE PCC
+							           ON PC.N_CHARGE_NO = PCC.CHARGE_NO
+								    WHERE MI.CONFIRM_YN = 'Y'
+								      AND PC.CAR_NO = #{kCarNumber}
+								      AND PC.PAY_GUBN = 'PG004'
+					           ) Z
+					       WHERE 1=1
+						   GROUP BY Z.PAY_CODE, Z.PAY_SEQ, Z.APPLY_CODE, Z.P_GOV_ACCOUNT_NAME, Z.P_GOV_ACCOUNT_NUMBER, Z.N_PARKING_PRICE, Z.REJECT_REASON
+				      ) X
+		     ) Y
+	    <![CDATA[WHERE Y.NUM <= 3 AND Y.NUM >= 1]]>
+		<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+		   AND Y.P_GOV_CODE = #{kParkingGovCode}
+		</if>
+	</select>
+</mapper>

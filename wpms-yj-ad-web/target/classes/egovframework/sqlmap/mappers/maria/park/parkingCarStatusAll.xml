@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.parkingCarStatusAll">
+	
+	<select id="select_parkStatusAllList" parameterType="commonMap" resultType="commonMap">
+		SELECT PCH.CAR_NO, IFNULL(MI.MEMBER_NAME, '') AS MEMBER_NAME
+			 , DATE_FORMAT(PCH.P_ENT_DT, '%Y-%m-%d %H:%i:%s') P_ENT_DT
+			 , DATE_FORMAT(PCH.P_OUT_DT, '%Y-%m-%d %H:%i:%s') P_OUT_DT
+		     , (SELECT CODE_NAME1 FROM T_SYS_COMCODE WHERE PARENT_CODE_ID = 'PARKING_STATUS' AND CODE_ID = PCH.PARKING_STATUS) AS PARKING_STATUS 
+		     , ROW_NUMBER() OVER(ORDER BY PCH.P_ENT_DT DESC) AS NUM
+		  FROM T_PARKING_INFO PI
+		 INNER JOIN T_PARKING_CAR_HISTORY PCH
+		    ON PI.PARKING_NO = PCH.PARKING_NO
+		  LEFT OUTER JOIN T_MEMBER_INFO MI
+		    ON MI.MEMBER_ID = PCH.MEMBER_ID
+		 WHERE PI.USE_YN = 'Y'
+		   <if test="kParkingNo neq null and kParkingNo neq ''" >
+				AND PI.PARKING_NO = #{kParkingNo}
+			</if>
+			<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+				AND PI.P_GOV_CODE = #{kParkingGovCode}
+			</if>
+			<![CDATA[AND PCH.P_ENT_DT <= ( STR_TO_DATE(#{endDt}, '%Y-%m-%d') + INTERVAL 1 DAY )]]>
+		    <![CDATA[AND PCH.P_ENT_DT >= STR_TO_DATE(#{startDt}, '%Y-%m-%d')]]>
+			<if test="kSearchGubn neq null and kSearchGubn neq ''" >
+				AND PCH.PARKING_STATUS = #{kSearchGubn}
+			</if>
+			<choose>
+				<when test="kMemberYn eq 'Y'.toString()">
+					AND MI.MEMBER_NAME IS NOT NULL
+				</when>
+				<when test="kMemberYn eq 'N'.toString()">
+					AND MI.MEMBER_NAME IS NULL
+				</when>
+				<otherwise>
+				</otherwise>
+			</choose>
+		 ORDER BY PCH.P_ENT_DT DESC
+	</select>
+</mapper>

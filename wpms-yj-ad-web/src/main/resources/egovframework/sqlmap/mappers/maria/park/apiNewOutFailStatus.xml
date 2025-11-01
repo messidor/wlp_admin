@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.park.apiNewOutFailStatus">
+	
+	<select id="select_List" parameterType="commonMap" resultType="commonMap">
+		SELECT CASE WHEN A.RESULT_CODE = 00 THEN '성공' ELSE '실패' END RESULT_GUBN
+		     , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') REG_DT, A.ERR_MSG
+		     , A.OUT_API_CODE, A.SERVICE_KEY, A.PARKING_AREA_CODE, A.CAR_NUMBER_RECV
+	         , A.PARKING_FEE, A.REDUCE_CODE, DATE_FORMAT(A.OUT_DT, '%Y-%m-%d %H:%i:%s') OUT_DT, A.RESULT_CODE
+	         , A.RESULT_MSG, A.RESULT_MSG, A.PAYMENT_YN, DATE_FORMAT(A.MDFCN_DT, '%Y-%m-%d %H:%i:%s') MDFCN_DT
+	         , A.TOTAL_PARKING_FEE, A.TOTAL_PARKING_PRICE, A.PRE_PAY_FEE
+	      FROM T_OUT_CAR_API_HISTORY A
+	     WHERE 1=1
+		   AND A.RESULT_CODE != '00'
+		<if test="carNumber neq null and carNumber neq ''" >
+			AND A.CAR_NUMBER_RECV LIKE '%${carNumber}%'
+		</if>
+		<![CDATA[AND A.REG_DT >= STR_TO_DATE(#{startDate}, '%Y-%m-%d')]]>
+  		<![CDATA[AND A.REG_DT <= STR_TO_DATE(#{endDate}, '%Y-%m-%d') + INTERVAL 1 DAY]]>
+		 ORDER BY A.REG_DT DESC 
+	</select>
+	
+</mapper>

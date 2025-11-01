@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.common">
+
+	<select id="select_commCode" parameterType="commonMap" resultType="commonMap">
+		SELECT A.CODE_ID as VALUE
+		     , A.CODE_NAME1 as TEXT
+		  FROM T_SYS_COMCODE A
+		 WHERE A.PARENT_CODE_ID = #{parentCodeId}
+		   AND A.USE_YN = 'Y'
+		 ORDER BY CODE_ORDER
+	</select>
+	
+<!-- 	DECODE(Z.MENU_URL,NULL,Z.MENU_URL,('/walletfree-admin' || Z.MENU_URL)) MENU_URL -->
+	<select id="select_menu" parameterType="commonMap" resultType="commonMap">
+		WITH RECURSIVE CTE AS (
+		    SELECT M.PARENT_MENU_ID, M.MENU_ID, M.MENU_ORDER
+		         , CONVERT(LPAD(M.MENU_ORDER, 4, '0'), CHAR(2048)) AS MENU_ORDER_STR
+		         , 1 AS MENU_DEPTH
+		         , CONVERT(IFNULL(M.MENU_NAME, 'UNSET'), CHAR(2048)) AS MENU_NAME_STR
+		      FROM T_SYS_MENU_INFO M
+		     INNER JOIN T_SYS_MENU_BTN_ROLE_INFO E
+		        ON M.MENU_ID = E.MENU_ID
+		       AND E.BTN_ID = 'Search'
+		       AND <foreach item="item" index="index" collection="userRoleIdAry" open="E.ROLE_ID IN (" separator="," close=")">#{item}</foreach>
+	    	 INNER JOIN T_SYS_MENU_BTN F
+		        ON E.MENU_ID = F.MENU_ID
+		       AND E.BTN_ID = F.BTN_ID
+		     WHERE M.PARENT_MENU_ID = 1
+		       AND M.CODE_TYPE IN ('F', 'C')
+		       AND M.USE_YN = 'Y'
+		     UNION ALL
+		    SELECT A.PARENT_MENU_ID, A.MENU_ID, A.MENU_ORDER
+		         , CONCAT(C.MENU_ORDER_STR, '_', CONVERT(LPAD(A.MENU_ORDER, 4, '0'), CHAR(2048))) AS MENU_ORDER_STR
+		         , C.MENU_DEPTH + 1 AS MENU_DEPTH
+		         , CONCAT(C.MENU_NAME_STR, '|', IFNULL(A.MENU_NAME, 'UNSET')) AS MENU_NAME_STR
+		      FROM T_SYS_MENU_INFO A
+		     INNER JOIN CTE C
+		        ON A.PARENT_MENU_ID = C.MENU_ID
+		     INNER JOIN T_SYS_MENU_BTN_ROLE_INFO E
+		        ON A.MENU_ID = E.MENU_ID
+		       AND E.BTN_ID = 'Search'
+		       AND <foreach item="item" index="index" collection="userRoleIdAry" open="E.ROLE_ID IN (" separator="," close=")">#{item}</foreach>
+	    	 INNER JOIN T_SYS_MENU_BTN F
+		        ON E.MENU_ID = F.MENU_ID
+		       AND E.BTN_ID = F.BTN_ID
+		     WHERE A.USE_YN = 'Y'
+		       AND A.CODE_TYPE IN ('F', 'C')
+		)
+		SELECT A.PARENT_MENU_ID, A.MENU_ID
+		     , IFNULL(A.MENU_NAME, 'UNSET') MENU_NAME
+		     , IFNULL(A.MENU_URL, '') MENU_URL, A.MENU_ICON
+		     , REPLACE(CONCAT('/walletfree-admin', IFNULL(A.MENU_URL, '')), ' ', '') ACTIVE_MENU_URL
+		     , C.MENU_ORDER_STR, C.MENU_DEPTH, C.MENU_NAME_STR
+		     , CASE WHEN D.PM_ID_CNT > 0 THEN 'Y' ELSE 'N' END AS CHILD_NODE
+		     , RANK() OVER(PARTITION BY A.PARENT_MENU_ID ORDER BY C.MENU_ORDER_STR) AS MN_ASC
+		     , RANK() OVER(PARTITION BY A.PARENT_MENU_ID ORDER BY C.MENU_ORDER_STR DESC) AS MN_DESC
+		  FROM T_SYS_MENU_INFO A
+		 INNER JOIN CTE C
+		    ON A.MENU_ID = C.MENU_ID
+		  LEFT OUTER JOIN (
+		            SELECT PARENT_MENU_ID, COUNT(PARENT_MENU_ID) AS PM_ID_CNT
+		              FROM T_SYS_MENU_INFO A
+		             INNER JOIN T_SYS_MENU_BTN_ROLE_INFO B
+		                ON A.MENU_ID = B.MENU_ID
+		               AND B.BTN_ID = 'Search'
+		               AND <foreach item="item" index="index" collection="userRoleIdAry" open="B.ROLE_ID IN (" separator="," close=")">#{item}</foreach>
+	    	 		 INNER JOIN T_SYS_MENU_BTN F
+		        		ON B.MENU_ID = F.MENU_ID
+		       		   AND B.BTN_ID = F.BTN_ID
+		             WHERE USE_YN = 'Y'
+		             GROUP BY PARENT_MENU_ID
+		       ) D
+		    ON A.MENU_ID = D.PARENT_MENU_ID
+		 INNER JOIN T_SYS_MENU_BTN_ROLE_INFO E
+		    ON A.MENU_ID = E.MENU_ID
+		   AND E.BTN_ID = 'Search'
+		   AND <foreach item="item" index="index" collection="userRoleIdAry" open="E.ROLE_ID IN (" separator="," close=")">#{item}</foreach>
+	     INNER JOIN T_SYS_MENU_BTN F
+		    ON E.MENU_ID = F.MENU_ID
+		   AND E.BTN_ID = F.BTN_ID
+		 WHERE A.CODE_TYPE IN ('F', 'C')
+		   AND ((C.MENU_DEPTH IN (1, 2)) OR C.MENU_DEPTH = 3 OR (C.MENU_DEPTH IN (1, 2) AND IFNULL(A.MENU_URL, '') != ''))
+		 GROUP BY A.PARENT_MENU_ID, A.MENU_ID, A.MENU_NAME, A.MENU_URL, A.MENU_ICON, C.MENU_ORDER_STR, C.MENU_DEPTH, C.MENU_NAME_STR
+		 ORDER BY C.MENU_ORDER_STR
+	</select> 
+	
+	<select id="select_checkHasAuth" parameterType="commonMap" resultType="commonMap">
+		SELECT A.ROLE_ID, C.BTN_ID, C.MENU_ID
+		  FROM T_SYS_USER_ROLE_INFO A
+		  LEFT OUTER JOIN T_SYS_USER_ROLE_INFO B
+		    ON A.USER_ID = B.USER_ID
+		   AND A.ROLE_ID = B.ROLE_ID
+		  LEFT OUTER JOIN T_SYS_MENU_BTN_ROLE_INFO C
+		    ON B.ROLE_ID = C.ROLE_ID
+		  LEFT OUTER JOIN T_SYS_MENU_INFO D
+		    ON C.MENU_ID = D.MENU_ID
+		  LEFT OUTER JOIN T_SYS_BTN_INFO E
+		    ON C.BTN_ID = E.BTN_ID
+	    INNER JOIN T_SYS_MENU_BTN F
+		    ON C.MENU_ID = F.MENU_ID
+		   AND C.BTN_ID = F.BTN_ID
+		 WHERE A.USER_ID = #{userId}
+		   AND D.MENU_URL = #{url}
+		   AND EXISTS (
+		            SELECT 1
+		              FROM T_SYS_MENU_BTN_ROLE_INFO
+		             WHERE ROLE_ID = A.ROLE_ID
+		               AND MENU_ID = D.MENU_ID
+		               AND BTN_ID = 'Search'
+		       )
+		 ORDER BY E.BTN_ORDER
+	</select>
+	
+	<!-- 오류 -->
+	<select id="select_popupUrl" parameterType="commonMap" resultType="commonMap">
+		SELECT MENU_URL
+		  FROM T_SYS_MENU_INFO
+		 WHERE CODE_TYPE = 'P'
+		   AND USE_YN = 'Y'
+		   AND URL = #{url}
+	</select>
+	
+	<select id="select_Button" parameterType="commonMap" resultType="commonMap">
+		SELECT A.BTN_ID
+		     , A.BTN_CAPTION
+		     , A.BTN_CLASS, A.BTN_ICON, A.ICON_LOC, A.BTN_DISP_TYPE
+		  FROM T_SYS_BTN_INFO A
+		  LEFT OUTER JOIN T_SYS_USER_OPTION D
+		    ON D.USER_ID = #{userId}
+		   AND D.OPT_CODE = 'OP0005'
+		 WHERE A.BTN_ID = #{btnId}
+	</select>
+
+    <!-- 회사별 옵션 데이터 조회 -->
+    <select id="select_allCompOption" parameterType="commonMap" resultType="commonMap">
+        SELECT ELEC_AUTO_YN, LOW_PLT_CF_GUBN, CALL_API_YN, REG_API_TRY_CNT, AUTO_API_TRY_CNT
+          FROM T_SYS_OPTION
+    </select>
+</mapper>

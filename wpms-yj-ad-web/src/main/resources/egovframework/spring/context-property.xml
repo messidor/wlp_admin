@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.springframework.org/schema/beans"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                           http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+    <util:properties id="global" location="classpath:/egovframework/egovProps/globals.properties" />
+    <util:properties id="prop" location="classpath:/egovframework/egovProps/globals-#{global['Globals.active']}.properties" />
+
+    <!-- Message Source-->
+    <bean name="propertyService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl"
+          destroy-method="destroy">
+        <property name="properties">
+            <map>
+                <entry key="uploadFilePath" value="${Globals.uploadFilePath}"/>
+                <!--<entry key="host" value="http://sandbox.demosx.org"/>-->
+                <entry key="host" value="${Globals.host}"/>
+                <entry key="userUrl" value="${Globals.userUrl}"/>
+                <entry key="apiUrl" value="${Globals.apiUrl}"/>
+                <entry key="billPayApiUrl" value="${Globals.billPayApiUrl}"/>
+                <entry key="payCancelApiUrl" value="${Globals.payCancelApiUrl}"/>
+                
+                <entry key="kakaoId" value="${Globals.kakaoId}"/>
+                <entry key="kakaoPw" value="${Globals.kakaoPw}"/>
+                <entry key="profileKey" value="${Globals.profileKey}"/>
+                <entry key="msgSendNumber" value="${Globals.msgSendNumber}"/>
+                <entry key="smsId" value="${Globals.smsId}"/>
+                <entry key="domain" value="${Globals.domain}"/>
+                
+                <entry key="autoPayApiUrl" value="${Globals.autoPayApiUrl}"/>
+                <entry key="newMemberApiUrl" value="${Globals.newMemberApiUrl}"/>
+                
+                <entry key="debugMode" value="${Globals.debugMode}"/>
+                <entry key="payTest" value="${Globals.payTest}"/>
+                
+                <entry key="rootAd" value="${Globals.rootAd}"/>
+                <entry key="rootUs" value="${Globals.rootUs}"/>
+            </map>
+        </property>
+    </bean>
+
+</beans>

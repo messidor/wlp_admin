@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.board.announcement">
+
+	<select id="Select_List" parameterType="commonMap"	resultType="commonMap">
+		SELECT ROW_NUMBER() OVER(ORDER BY A.REG_DT) AS NUM
+	  		  , A.BOARD_ID
+		 	  , A.BOARD_TITLE
+		 	  , B.USER_NAME
+		 	  , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		 	  , C1.CODE_NAME1 AS POP_NOTICE
+		 	  , CASE WHEN A.POP_NOTICE_START_DATE IS NOT NULL AND A.POP_NOTICE != 'PN001' THEN C2.CODE_NAME1 ELSE '' END AS POP_NOTICE_ORDER
+		 	  , CASE WHEN A.POP_NOTICE_START_DATE IS NOT NULL AND A.POP_NOTICE != 'PN001' THEN C3.CODE_NAME1 ELSE '' END AS CONTENT_VIEW_YN
+		 	  , CASE WHEN A.POP_NOTICE_START_DATE IS NOT NULL AND A.POP_NOTICE != 'PN001'
+		 	  		 THEN CONCAT(DATE_FORMAT(A.POP_NOTICE_START_DATE, '%Y-%m-%d')  , ' ~ ' , DATE_FORMAT(A.POP_NOTICE_END_DATE, '%Y-%m-%d'))
+		 	  		 ELSE '' END AS POP_NOTICE_DATE
+	  	   FROM T_SYS_BOARD_INFO A
+	  	   LEFT OUTER JOIN T_USER_INFO B
+	  	     ON A.REG_ID = B.USER_ID
+	  	   LEFT OUTER JOIN T_SYS_COMCODE C1
+	  	     ON A.POP_NOTICE_PARENT = C1.PARENT_CODE_ID
+	  	    AND A.POP_NOTICE = C1.CODE_ID
+	  	   LEFT OUTER JOIN T_SYS_COMCODE C2
+	  	     ON A.POP_NOTICE_ORDER_PARENT = C2.PARENT_CODE_ID
+	  	    AND A.POP_NOTICE_ORDER = C2.CODE_ID
+	  	   LEFT OUTER JOIN T_SYS_COMCODE C3
+	  	     ON A.CONTENT_VIEW_YN_PARENT = C3.PARENT_CODE_ID
+	  	    AND A.CONTENT_VIEW_YN = C3.CODE_ID
+	  	  WHERE A.BOARD_GUBN = 'A'
+	  	  
+ 		<if test="kTitle neq null and kTitle neq ''" >
+			AND A.BOARD_TITLE LIKE '%${kTitle}%'
+		</if>
+		<if test="kPopNotice neq null and kPopNotice neq ''" >
+			AND A.POP_NOTICE = #{kPopNotice}
+		</if>
+
+	  	  ORDER BY A.REG_DT DESC
+	</select>
+
+	<select id="Select_PopupList" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.BOARD_ID
+			 , A.BOARD_TITLE
+			 , A.BOARD_CONTENT
+			 , IFNULL(CONCAT(F.ORIG_FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '') AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN IFNULL(CONCAT(F.FILE_PATH , F.FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '') 
+			 		ELSE IFNULL(CONCAT(F.FILE_PATH , F.FILE_NAME , IF(F.FILE_PATH IS NOT NULL, '.', '') , F.FILE_EXT), '')
+			 		 END AS FILE_PATH
+			 , IFNULL(A.FILE_REL_KEY, '') AS FILE_REL_KEY
+			 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+			 , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+			 , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+			 , A.POP_NOTICE
+			 , A.POP_NOTICE_ORDER
+		     , A.POP_NOTICE_START_DATE
+		     , A.POP_NOTICE_END_DATE
+		     , A.CONTENT_VIEW_YN
+		     , IF(A.MAIN_FILE_KEY = F.FILE_KEY, 'Y', 'N') AS MAIN_IMG_YN
+             , IFNULL(A.MOB_FILE_KEY, '') AS MOB_FILE_KEY
+             , CASE WHEN A.MOB_FILE_KEY IS NOT NULL AND A.MOB_FILE_KEY = F.FILE_KEY THEN 'Y' ELSE 'N' END AS MOB_IMG_YN
+		  FROM T_SYS_BOARD_INFO A
+		  LEFT OUTER JOIN T_FILE_RELATION R
+	     	ON A.FILE_REL_KEY = R.FILE_REL_KEY
+	  	  LEFT OUTER JOIN T_FILE_INFO F
+	     	ON R.FILE_KEY = F.FILE_KEY
+		 WHERE A.BOARD_ID = #{hBoardId}
+		   AND A.BOARD_GUBN = 'A'
+		 ORDER BY F.FILE_KEY ASC
+	</select>
+	
+	<select id="Select_Preview" parameterType="commonMap"	resultType="commonMap">
+		SELECT A.BOARD_TITLE
+            <![CDATA[
+             , REPLACE(A.BOARD_CONTENT, '
+', '<br>') AS BOARD_CONTENT
+            ]]>
+			 , IFNULL(F.ORIG_FILE_NAME || IF(F.FILE_PATH IS NOT NULL, '.', '') || F.FILE_EXT, '') AS FILE_NAME
+			 , CASE WHEN F.FILE_KEY IS NULL THEN IFNULL(F.FILE_PATH || F.FILE_NAME || IF(F.FILE_PATH IS NOT NULL, '.', '') || F.FILE_EXT, '') ELSE IFNULL(F.FILE_PATH || F.FILE_NAME || IF(F.FILE_PATH IS NOT NULL, '.', '') || F.FILE_EXT, '') END AS FILE_PATH
+			 , IFNULL(A.FILE_REL_KEY, '') AS FILE_REL_KEY
+			 , IFNULL(F.FILE_KEY, '') AS FILE_KEY
+			 , IFNULL(F.MIME_TYPE, '') AS MIME_TYPE
+			 , IFNULL(F.FILE_EXT, '') AS FILE_EXT
+			 , IFNULL(A.CONTENT_VIEW_YN, 'Y') AS CONTENT_VIEW_YN
+		  FROM T_SYS_BOARD_INFO A
+	  	  LEFT OUTER JOIN T_FILE_INFO F
+	     	ON A.MAIN_FILE_KEY = F.FILE_KEY
+		 WHERE A.BOARD_ID = #{boardId}
+	</select>
+
+	<insert id="Insert_PopupData">
+		INSERT INTO T_SYS_BOARD_INFO (
+			   MEMBER_ID
+			 , BOARD_ID
+			 , BOARD_TITLE
+			 , BOARD_GUBN_PARENT
+			 , BOARD_GUBN
+			 , FILE_REL_KEY
+			 , REG_ID
+			 , REG_DT
+			 , MOD_ID
+			 , MOD_DT
+			 , BOARD_COMMENT
+			 , COMMENT_YN_PARENT
+			 , COMMENT_YN
+			 , COMMENT_REG_ID
+			 , COMMENT_REG_DT
+			 , BOARD_CONTENT
+			 , RECV_GUBN
+			 , POP_NOTICE_PARENT
+			 , POP_NOTICE
+		     , POP_NOTICE_START_DATE
+		     , POP_NOTICE_END_DATE
+		     , MAIN_FILE_KEY
+		     , POP_NOTICE_ORDER_PARENT
+		     , POP_NOTICE_ORDER
+		     , CONTENT_VIEW_YN_PARENT
+		     , CONTENT_VIEW_YN
+        <if test="mainMobKey neq null and mainMobKey neq ''">
+		     , MOB_FILE_KEY
+		</if>
+			 ) VALUES (
+			   #{userId}
+			 , FN_MAKE_KEY('BOARD_ID')
+			 , #{boardTitle}
+			 , 'BOARD_GUBN'
+			 , 'A'
+			 , #{realFileRelKey}
+			 , #{userId}
+			 , NOW()
+			 , #{userId}
+			 , NOW()
+			 , ''
+			 , ''
+			 , ''
+			 , ''
+			 , NULL
+			 , #{boardContent}
+			 , 'BR001'
+			 , 'POP_NOTICE'
+			 , #{popNotice}
+			 , #{popNoticeStartDate}
+			 , #{popNoticeEndDate}
+			 , #{mainFileKey}
+			 , 'POP_NOTICE_ORDER'
+			 , #{popNoticeOrder}
+			 , 'CONTENT_VIEW_YN'
+			 , #{contentViewYn}
+        <if test="mainMobKey neq null and mainMobKey neq ''">
+			 , #{mainMobKey}
+	    </if>
+			 )
+	</insert>
+
+	<update id="Update_PopupData">
+		UPDATE T_SYS_BOARD_INFO
+		   SET BOARD_TITLE = #{boardTitle}
+		     , BOARD_CONTENT = #{boardContent}
+		     , FILE_REL_KEY = #{realFileRelKey}
+		     , POP_NOTICE = #{popNotice}
+		     , POP_NOTICE_ORDER = #{popNoticeOrder}
+		     , POP_NOTICE_START_DATE = #{popNoticeStartDate}
+		     , POP_NOTICE_END_DATE = #{popNoticeEndDate}
+        <if test="mainFileKey neq null and mainFileKey neq ''">
+             , MAIN_FILE_KEY = #{mainFileKey}
+        </if>
+		     , CONTENT_VIEW_YN = #{contentViewYn}
+        <if test="mainMobKey neq null and mainMobKey neq ''">
+             , MOB_FILE_KEY = #{mainMobKey}
+        </if>
+        <if test="mainMobKey eq null or mainMobKey eq ''">
+             , MOB_FILE_KEY = NULL
+        </if>
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE BOARD_ID = #{hBoardId}
+	</update>
+
+	<delete id="Delete_PopupData">
+		DELETE
+		  FROM T_SYS_BOARD_INFO
+		 WHERE BOARD_ID = #{hBoardId}
+	</delete>
+	
+	<update id="Update_fileKeyDelete">
+		UPDATE T_SYS_BOARD_INFO
+		   SET FILE_REL_KEY = ''
+		     , MOD_ID = #{userId}
+		     , MOD_DT = NOW()
+		 WHERE BOARD_ID = #{hBoardId}
+	</update>
+	
+	<select id="Select_FileList" parameterType="commonMap"	resultType="commonMap">
+		SELECT COUNT(*) AS CNT
+		  FROM T_SYS_BOARD_INFO BI
+		 INNER JOIN T_FILE_RELATION FR
+		    ON BI.FILE_REL_KEY = FR.FILE_REL_KEY
+		 INNER JOIN T_FILE_INFO FI
+		    ON FR.FILE_KEY = FI.FILE_KEY
+		 WHERE BOARD_ID = #{hBoardId}
+	</select>
+
+</mapper>

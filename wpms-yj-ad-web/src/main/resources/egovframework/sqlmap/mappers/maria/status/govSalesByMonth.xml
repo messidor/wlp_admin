@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.yeongju.its.ad.core.mapper.status.govSalesByMonth">
+
+	<select id="select_govSalesByMonthList" parameterType="commonMap" resultType="commonMap">
+		   SELECT J.P_GOV_NAME
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 1 THEN T.TOTAL END), 0) AS M1
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 2 THEN T.TOTAL END), 0) AS M2
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 3 THEN T.TOTAL END), 0) AS M3
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 4 THEN T.TOTAL END), 0) AS M4
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 5 THEN T.TOTAL END), 0) AS M5
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 6 THEN T.TOTAL END), 0) AS M6
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 7 THEN T.TOTAL END), 0) AS M7
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 8 THEN T.TOTAL END), 0) AS M8
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 9 THEN T.TOTAL END), 0) AS M9
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 10 THEN T.TOTAL END), 0) AS M10
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 11 THEN T.TOTAL END), 0) AS M11
+				, IFNULL(SUM(CASE WHEN T.PAY_MONTH = 12 THEN T.TOTAL END), 0) AS M12
+
+		    FROM T_PARKING_GOV_INFO J
+		    LEFT OUTER JOIN
+		    ( SELECT PAY_YEAR
+						, PAY_MONTH
+						, SUM(PARKING_PRICE) AS TOTAL
+						, P_GOV_CODE
+						, P_GOV_NAME
+		             FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+								 , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+								 , B.PARKING_PRICE
+								 , D.P_GOV_CODE
+								 , D.P_GOV_NAME
+							  FROM T_PARKING_PAY A
+							 INNER JOIN T_PARKING_CHARGE B
+								ON A.PAY_CODE = B.PAY_CODE
+							 INNER JOIN T_PARKING_INFO C
+								ON B.PARKING_NO = C.PARKING_NO
+							  LEFT OUTER JOIN T_PARKING_GOV_INFO D
+								ON C.P_GOV_CODE = D.P_GOV_CODE
+							 WHERE NOT EXISTS (
+						          		 		SELECT 1
+						          		 		  FROM (
+						           		 		  		 SELECT PAY_CODE, COUNT(*)
+						         					       FROM T_PARKING_PAY
+						         					      WHERE 1=1
+						         					        AND DATE_FORMAT(PAY_DATE, '%Y') = #{kYearDate}
+						         					      GROUP BY PAY_CODE
+						         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+						          		 		     ) Q
+						          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+						          		       ) 
+						       AND C.USE_YN = 'Y'
+						) P
+					WHERE PAY_YEAR = #{kYearDate}
+					GROUP BY PAY_YEAR,PAY_MONTH,P_GOV_CODE,P_GOV_NAME
+					)T
+			   ON T.P_GOV_CODE = J.P_GOV_CODE 
+			WHERE J.USE_YN = 'Y'
+			<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+			  AND J.P_GOV_CODE = #{kParkingGovCode}
+			</if>
+		GROUP BY J.P_GOV_CODE, J.P_GOV_NAME
+		ORDER BY J.P_GOV_NAME
+	</select>
+	
+	<select id="select_govSalesByMonthExcel" parameterType="commonMap" resultType="commonMap">
+		   SELECT *
+		     FROM (
+				   SELECT J.P_GOV_NAME
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 1 THEN T.TOTAL END), 0), 0) AS M1
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 2 THEN T.TOTAL END), 0), 0) AS M2
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 3 THEN T.TOTAL END), 0), 0) AS M3
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 4 THEN T.TOTAL END), 0), 0) AS M4
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 5 THEN T.TOTAL END), 0), 0) AS M5
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 6 THEN T.TOTAL END), 0), 0) AS M6
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 7 THEN T.TOTAL END), 0), 0) AS M7
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 8 THEN T.TOTAL END), 0), 0) AS M8
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 9 THEN T.TOTAL END), 0), 0) AS M9
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 10 THEN T.TOTAL END), 0), 0) AS M10
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 11 THEN T.TOTAL END), 0), 0) AS M11
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 12 THEN T.TOTAL END), 0), 0) AS M12
+		
+				    FROM T_PARKING_GOV_INFO J
+		    		LEFT OUTER JOIN 
+				    ( SELECT PAY_YEAR
+								, PAY_MONTH
+								, SUM(PARKING_PRICE) AS TOTAL
+								, P_GOV_CODE
+								, P_GOV_NAME
+				             FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+										 , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+										 , B.PARKING_PRICE
+										 , D.P_GOV_CODE
+										 , D.P_GOV_NAME
+									  FROM T_PARKING_PAY A
+									 INNER JOIN T_PARKING_CHARGE B
+										ON A.PAY_CODE = B.PAY_CODE
+									 INNER JOIN T_PARKING_INFO C
+										ON B.PARKING_NO = C.PARKING_NO
+									  LEFT OUTER JOIN T_PARKING_GOV_INFO D
+										ON C.P_GOV_CODE = D.P_GOV_CODE
+									 WHERE NOT EXISTS (
+								          		 		SELECT 1
+								          		 		  FROM (
+								           		 		  		 SELECT PAY_CODE, COUNT(*)
+								         					       FROM T_PARKING_PAY
+								         					      WHERE 1=1
+						         					        		AND DATE_FORMAT(PAY_DATE, '%Y') = #{kYearDate}
+								         					      GROUP BY PAY_CODE
+								         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+								          		 		     ) Q
+								          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+								          		       ) 
+						       		   AND C.USE_YN = 'Y'
+									) P
+							WHERE PAY_YEAR = #{kYearDate}
+							GROUP BY PAY_YEAR,PAY_MONTH,P_GOV_CODE,P_GOV_NAME
+							)T
+					   ON T.P_GOV_CODE = J.P_GOV_CODE 
+					WHERE J.USE_YN = 'Y'
+					<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+					  AND J.P_GOV_CODE = #{kParkingGovCode}
+					</if>
+				GROUP BY J.P_GOV_CODE, J.P_GOV_NAME
+				
+				UNION
+				
+				SELECT '합계' AS P_GOV_NAME
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 1 THEN T.TOTAL END), 0), 0) AS M1
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 2 THEN T.TOTAL END), 0), 0) AS M2
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 3 THEN T.TOTAL END), 0), 0) AS M3
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 4 THEN T.TOTAL END), 0), 0) AS M4
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 5 THEN T.TOTAL END), 0), 0) AS M5
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 6 THEN T.TOTAL END), 0), 0) AS M6
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 7 THEN T.TOTAL END), 0), 0) AS M7
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 8 THEN T.TOTAL END), 0), 0) AS M8
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 9 THEN T.TOTAL END), 0), 0) AS M9
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 10 THEN T.TOTAL END), 0), 0) AS M10
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 11 THEN T.TOTAL END), 0), 0) AS M11
+						, FORMAT(IFNULL(SUM(CASE WHEN T.PAY_MONTH = 12 THEN T.TOTAL END), 0), 0) AS M12
+		
+				    FROM ( SELECT PAY_YEAR
+								, PAY_MONTH
+								, SUM(PARKING_PRICE) AS TOTAL
+				             FROM ( SELECT DATE_FORMAT(A.PAY_DATE, '%Y') PAY_YEAR
+										 , DATE_FORMAT(A.PAY_DATE, '%m') PAY_MONTH
+										 , B.PARKING_PRICE
+									  FROM T_PARKING_PAY A
+									 INNER JOIN T_PARKING_CHARGE B
+										ON A.PAY_CODE = B.PAY_CODE
+									 INNER JOIN T_PARKING_INFO C
+										ON B.PARKING_NO = C.PARKING_NO
+									  LEFT OUTER JOIN T_PARKING_GOV_INFO D
+										ON C.P_GOV_CODE = D.P_GOV_CODE
+									 WHERE NOT EXISTS (
+								          		 		SELECT 1
+								          		 		  FROM (
+								           		 		  		 SELECT PAY_CODE, COUNT(*)
+								         					       FROM T_PARKING_PAY
+								         					      WHERE 1=1
+						         					        		AND DATE_FORMAT(PAY_DATE, '%Y') = #{kYearDate}
+								         					      GROUP BY PAY_CODE
+								         					     HAVING COUNT(*) <![CDATA[ > ]]> 1
+								          		 		     ) Q
+								          		 		 WHERE Q.PAY_CODE = A.PAY_CODE
+								          		       ) 
+						              AND C.USE_YN = 'Y'
+									<if test="kParkingGovCode neq null and kParkingGovCode neq ''" >
+									  AND D.P_GOV_CODE = #{kParkingGovCode}
+									</if>
+									) P
+							WHERE PAY_YEAR = #{kYearDate}
+							GROUP BY PAY_YEAR,PAY_MONTH
+							)T
+					WHERE 1=1
+			    ) Y
+			ORDER BY Y.P_GOV_NAME
+	</select>
+</mapper>
